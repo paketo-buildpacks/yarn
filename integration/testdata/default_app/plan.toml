@@ -1,0 +1,5 @@
+[[requires]]
+name = "yarn"
+
+[requires.metadata]
+launch = true

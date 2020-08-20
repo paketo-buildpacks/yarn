@@ -7,7 +7,7 @@ func Detect() packit.DetectFunc {
 		return packit.DetectResult{
 			Plan: packit.BuildPlan{
 				Provides: []packit.BuildPlanProvision{
-					{Name: "yarn"},
+					{Name: YarnDependency},
 				},
 			},
 		}, nil

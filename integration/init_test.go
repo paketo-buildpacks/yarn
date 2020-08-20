@@ -60,6 +60,12 @@ func TestIntegration(t *testing.T) {
 		Execute(root)
 	Expect(err).NotTo(HaveOccurred())
 
+	offlineBuildpack, err = buildpackStore.Get.
+		WithOfflineDependencies().
+		WithVersion("1.2.3").
+		Execute(root)
+	Expect(err).NotTo(HaveOccurred())
+
 	buildPlanBuildpack, err = buildpackStore.Get.
 		Execute(config.BuildPlan)
 	Expect(err).NotTo(HaveOccurred())
@@ -68,5 +74,7 @@ func TestIntegration(t *testing.T) {
 
 	suite := spec.New("Integration", spec.Report(report.Terminal{}), spec.Parallel())
 	suite("Default", testDefault)
+	suite("LayerReuse", testRebuildLayerReuse)
+	suite("Offline", testOffline)
 	suite.Run(t)
 }

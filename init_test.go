@@ -11,5 +11,7 @@ func TestUnitYarn(t *testing.T) {
 	suite := spec.New("yarn", spec.Report(report.Terminal{}), spec.Parallel())
 	suite("Build", testBuild)
 	suite("Detect", testDetect)
+	suite("PlanEntryResolver", testPlanEntryResolver)
+	suite("PlanRefinery", testPlanRefinery)
 	suite.Run(t)
 }

@@ -57,9 +57,11 @@ $ ./scripts/package.sh --version <version-number>
 This will create a `buildpackage.cnb` file under the `build` directory which you
 can use to build your app as follows:
 ```
-pack build <app-name> -p <path-to-app> -b build/buildpackage.cnb \
--b <path/to/yarn-requiring-cnb>
+pack build <app-name> -p <path-to-app> -b <path/to/node-engine.cnb> -b build/buildpackage.cnb \
+-b <path/to/node-and-yarn-requiring-cnb>
 ```
+
+Though the API of this buildpack does not require `node`, yarn is unusable without node.
 
 ## `buildpack.yml` Configurations
 

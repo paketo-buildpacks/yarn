@@ -54,10 +54,6 @@ func Build(
 
 		bom := planRefinery.BillOfMaterials(dependency)
 
-		yarnLayer.Build = entry.Metadata["build"] == true
-		yarnLayer.Cache = entry.Metadata["build"] == true
-		yarnLayer.Launch = entry.Metadata["launch"] == true
-
 		cachedSHA, ok := yarnLayer.Metadata[DependencyCacheKey].(string)
 		if ok && cachedSHA == dependency.SHA256 {
 			logger.Process("Reusing cached layer %s", yarnLayer.Path)
@@ -73,10 +69,14 @@ func Build(
 
 		logger.Process("Executing build process")
 
-		err = yarnLayer.Reset()
+		yarnLayer, err = yarnLayer.Reset()
 		if err != nil {
 			return packit.BuildResult{}, err
 		}
+
+		yarnLayer.Build = entry.Metadata["build"] == true
+		yarnLayer.Cache = entry.Metadata["build"] == true
+		yarnLayer.Launch = entry.Metadata["launch"] == true
 
 		logger.Subprocess("Installing Yarn")
 

@@ -31,6 +31,11 @@ api = "0.4"
     uri = "https://buildpacks.cloudfoundry.org/dependencies/yarn/yarn_1.22.10_linux_noarch_any-stack_0057c1c9.tgz"
     version = "1.22.10"
 
+  [[metadata.dependency-constraints]]
+    constraint = "1.*"
+    id = "yarn"
+    patches = 2
+
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
 

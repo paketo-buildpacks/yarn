@@ -1,9 +1,9 @@
 api = "0.4"
 
 [buildpack]
+  homepage = "https://github.com/paketo-buildpacks/yarn"
   id = "paketo-buildpacks/yarn"
   name = "Paketo Yarn Buildpack"
-  homepage = "https://github.com/paketo-buildpacks/yarn"
 
 [metadata]
   include-files = ["bin/run", "bin/build", "bin/detect", "buildpack.toml"]
@@ -14,21 +14,21 @@ api = "0.4"
   [[metadata.dependencies]]
     id = "yarn"
     name = "Yarn"
-    sha256 = "24ca2294411ea89ae6342a56e7194d7bbcb0710fa40042fdfb503b55d0181baf"
-    source = "https://github.com/yarnpkg/yarn/releases/download/v1.22.4/yarn-v1.22.4.tar.gz"
-    source_sha256 = "bc5316aa110b2f564a71a3d6e235be55b98714660870c5b6b2d2d3f12587fb58"
-    stacks = ["io.buildpacks.stacks.bionic", "org.cloudfoundry.stacks.cflinuxfs3"]
-    uri = "https://buildpacks.cloudfoundry.org/dependencies/yarn/yarn-1.22.4-any-stack-24ca2294.tgz"
-    version = "1.22.4"
+    sha256 = "7673874f06b1af730e05ecfa74d2016a03983d82ca8ed9c00e97ff40da9a018c"
+    source = "https://github.com/yarnpkg/yarn/releases/download/v1.22.5/yarn-v1.22.5.tar.gz"
+    source_sha256 = "c664fb4692e4dfea750a37a533780834b40198c00cef4bbc5e8c14abab2ac141"
+    stacks = ["io.buildpacks.stacks.bionic"]
+    uri = "https://deps.paketo.io/yarn/yarn_1.22.5_linux_noarch_bionic_7673874f.tgz"
+    version = "1.22.5"
 
   [[metadata.dependencies]]
     id = "yarn"
     name = "Yarn"
-    sha256 = "0057c1c90c3eadc953cc3e6772fd1477179d30a7007ac46ca148dd7bfab1d188"
+    sha256 = "0bf88b173faa83de5ca7f9fc6c4e0c917c8ae6c5fcc5dff12843d7a85f6004ff"
     source = "https://github.com/yarnpkg/yarn/releases/download/v1.22.10/yarn-v1.22.10.tar.gz"
     source_sha256 = "7e433d4a77e2c79e6a7ae4866782608a8e8bcad3ec6783580577c59538381a6e"
-    stacks = ["io.buildpacks.stacks.bionic", "org.cloudfoundry.stacks.cflinuxfs3"]
-    uri = "https://buildpacks.cloudfoundry.org/dependencies/yarn/yarn_1.22.10_linux_noarch_any-stack_0057c1c9.tgz"
+    stacks = ["io.buildpacks.stacks.bionic"]
+    uri = "https://deps.paketo.io/yarn/yarn_1.22.10_linux_noarch_bionic_0bf88b17.tgz"
     version = "1.22.10"
 
   [[metadata.dependency-constraints]]

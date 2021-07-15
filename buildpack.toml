@@ -12,6 +12,7 @@ api = "0.4"
     yarn = "1.*"
 
   [[metadata.dependencies]]
+    cpe = "cpe:2.3:a:yarnpkg:yarn:1.22.5:*:*:*:*:*:*:*"
     id = "yarn"
     name = "Yarn"
     sha256 = "7673874f06b1af730e05ecfa74d2016a03983d82ca8ed9c00e97ff40da9a018c"
@@ -22,6 +23,7 @@ api = "0.4"
     version = "1.22.5"
 
   [[metadata.dependencies]]
+    cpe = "cpe:2.3:a:yarnpkg:yarn:1.22.10:*:*:*:*:*:*:*"
     id = "yarn"
     name = "Yarn"
     sha256 = "0bf88b173faa83de5ca7f9fc6c4e0c917c8ae6c5fcc5dff12843d7a85f6004ff"

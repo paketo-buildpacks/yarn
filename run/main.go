@@ -6,22 +6,22 @@ import (
 	"github.com/paketo-buildpacks/packit"
 	"github.com/paketo-buildpacks/packit/cargo"
 	"github.com/paketo-buildpacks/packit/chronos"
+	"github.com/paketo-buildpacks/packit/draft"
 	"github.com/paketo-buildpacks/packit/postal"
+	"github.com/paketo-buildpacks/packit/scribe"
 	"github.com/paketo-buildpacks/yarn"
 )
 
 func main() {
-	entryResolver := yarn.NewPlanEntryResolver()
+	entryResolver := draft.NewPlanner()
 	dependencyManager := postal.NewService(cargo.NewTransport())
-	planRefinery := yarn.NewPlanRefinery()
-	logEmitter := yarn.NewLogEmitter(os.Stdout)
+	logEmitter := scribe.NewEmitter(os.Stdout)
 
 	packit.Run(
 		yarn.Detect(),
 		yarn.Build(
 			entryResolver,
 			dependencyManager,
-			planRefinery,
 			chronos.DefaultClock,
 			logEmitter,
 		),

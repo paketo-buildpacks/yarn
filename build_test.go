@@ -68,11 +68,13 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		dependencyManager.GenerateBillOfMaterialsCall.Returns.BOMEntrySlice = []packit.BOMEntry{
 			{
 				Name: "yarn",
-				Metadata: map[string]interface{}{
-					"name":   "yarn-dependency-name",
-					"sha256": "yarn-dependency-sha",
-					"stacks": []string{"some-stack"},
-					"uri":    "yarn-dependency-uri",
+				Metadata: packit.BOMMetadata{
+					URI:     "yarn-dependency-uri",
+					Version: "yarn-dependenct-version",
+					Checksum: packit.BOMChecksum{
+						Algorithm: packit.SHA256,
+						Hash:      "yarn-dependency-sha",
+					},
 				},
 			},
 		}
@@ -216,11 +218,13 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 					BOM: []packit.BOMEntry{
 						{
 							Name: "yarn",
-							Metadata: map[string]interface{}{
-								"name":   "yarn-dependency-name",
-								"sha256": "yarn-dependency-sha",
-								"stacks": []string{"some-stack"},
-								"uri":    "yarn-dependency-uri",
+							Metadata: packit.BOMMetadata{
+								URI:     "yarn-dependency-uri",
+								Version: "yarn-dependenct-version",
+								Checksum: packit.BOMChecksum{
+									Algorithm: packit.SHA256,
+									Hash:      "yarn-dependency-sha",
+								},
 							},
 						},
 					},
@@ -229,11 +233,13 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 					BOM: []packit.BOMEntry{
 						{
 							Name: "yarn",
-							Metadata: map[string]interface{}{
-								"name":   "yarn-dependency-name",
-								"sha256": "yarn-dependency-sha",
-								"stacks": []string{"some-stack"},
-								"uri":    "yarn-dependency-uri",
+							Metadata: packit.BOMMetadata{
+								URI:     "yarn-dependency-uri",
+								Version: "yarn-dependenct-version",
+								Checksum: packit.BOMChecksum{
+									Algorithm: packit.SHA256,
+									Hash:      "yarn-dependency-sha",
+								},
 							},
 						},
 					},

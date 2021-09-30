@@ -12,19 +12,6 @@ api = "0.5"
     yarn = "1.*"
 
   [[metadata.dependencies]]
-    cpe = "cpe:2.3:a:yarnpkg:yarn:1.22.12:*:*:*:*:*:*:*"
-    id = "yarn"
-    licenses = ["BSD-2-Clause", "BSD-2-Clause-NetBSD"]
-    name = "Yarn"
-    purl = "pkg:generic/yarn@1.22.12?checksum=1bfc6a45ed9788193907d93bfd2070ed805357733d785ae56176705c0ec4cfc1&download_url=https://github.com/yarnpkg/yarn/releases/download/v1.22.12/yarn-v1.22.12.tar.gz"
-    sha256 = "141ecaeca9046d9860bfb75702966560070d3b3ea795ae836a1bee6d8e7bc195"
-    source = "https://github.com/yarnpkg/yarn/releases/download/v1.22.12/yarn-v1.22.12.tar.gz"
-    source_sha256 = "1bfc6a45ed9788193907d93bfd2070ed805357733d785ae56176705c0ec4cfc1"
-    stacks = ["io.buildpacks.stacks.bionic"]
-    uri = "https://deps.paketo.io/yarn/yarn_1.22.12_linux_noarch_bionic_141ecaec.tgz"
-    version = "1.22.12"
-
-  [[metadata.dependencies]]
     cpe = "cpe:2.3:a:yarnpkg:yarn:1.22.14:*:*:*:*:*:*:*"
     id = "yarn"
     licenses = ["BSD-2-Clause", "BSD-2-Clause-NetBSD"]
@@ -36,6 +23,19 @@ api = "0.5"
     stacks = ["io.buildpacks.stacks.bionic"]
     uri = "https://deps.paketo.io/yarn/yarn_1.22.14_linux_noarch_bionic_1b6a14fd.tgz"
     version = "1.22.14"
+
+  [[metadata.dependencies]]
+    cpe = "cpe:2.3:a:yarnpkg:yarn:1.22.15:*:*:*:*:*:*:*"
+    id = "yarn"
+    licenses = ["BSD-2-Clause", "BSD-2-Clause-NetBSD"]
+    name = "Yarn"
+    purl = "pkg:generic/yarn@1.22.15?checksum=0c2841b9423f0fb9657ae6b18873f39551396ec242bfb882b11bed9e4648235e&download_url=https://github.com/yarnpkg/yarn/releases/download/v1.22.15/yarn-v1.22.15.tar.gz"
+    sha256 = "53e54072bad4ca5f7b6bf153f0775983b720fd509386290b5e1868a4a84b8344"
+    source = "https://github.com/yarnpkg/yarn/releases/download/v1.22.15/yarn-v1.22.15.tar.gz"
+    source_sha256 = "0c2841b9423f0fb9657ae6b18873f39551396ec242bfb882b11bed9e4648235e"
+    stacks = ["io.buildpacks.stacks.bionic"]
+    uri = "https://deps.paketo.io/yarn/yarn_1.22.15_linux_noarch_bionic_53e54072.tgz"
+    version = "1.22.15"
 
   [[metadata.dependency-constraints]]
     constraint = "1.*"

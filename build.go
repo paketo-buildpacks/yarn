@@ -7,6 +7,7 @@ import (
 	"github.com/paketo-buildpacks/packit"
 	"github.com/paketo-buildpacks/packit/chronos"
 	"github.com/paketo-buildpacks/packit/postal"
+	"github.com/paketo-buildpacks/packit/sbom"
 	"github.com/paketo-buildpacks/packit/scribe"
 )
 
@@ -20,7 +21,6 @@ type EntryResolver interface {
 type DependencyManager interface {
 	Resolve(path, id, version, stack string) (postal.Dependency, error)
 	Deliver(dependency postal.Dependency, cnbPath, layerPath, platformPath string) error
-	GenerateBillOfMaterials(dependencies ...postal.Dependency) []packit.BOMEntry
 }
 
 func Build(
@@ -52,19 +52,33 @@ func Build(
 			return packit.BuildResult{}, err
 		}
 
-		bom := dependencyManager.GenerateBillOfMaterials(dependency)
-
 		launch, build := entryResolver.MergeLayerTypes("yarn", context.Plan.Entries)
+
+		bom, err := sbom.GenerateFromDependency(dependency, yarnLayer.Path)
+		if err != nil {
+			panic(err)
+		}
 
 		var buildMetadata = packit.BuildMetadata{}
 		var launchMetadata = packit.LaunchMetadata{}
+		bomEntries := make(packit.SBOMEntries)
+		bomEntries.Set("cdx.json", bom.Format(sbom.CycloneDXFormat))
+		bomEntries.Set("syft.json", bom.Format(sbom.SyftFormat))
+		bomEntries.Set("spdx.json", bom.Format(sbom.SPDXFormat))
+
 		if build {
-			buildMetadata = packit.BuildMetadata{BOM: bom}
+			buildMetadata.SBOM = bomEntries
 		}
 
 		if launch {
-			launchMetadata = packit.LaunchMetadata{BOM: bom}
+			launchMetadata.SBOM = bomEntries
 		}
+
+		yarnLayer.Launch, yarnLayer.Build, yarnLayer.Cache = launch, build, build
+
+		yarnLayer.SBOM.Set("cdx.json", bom.Format(sbom.CycloneDXFormat))
+		yarnLayer.SBOM.Set("syft.json", bom.Format(sbom.SyftFormat))
+		yarnLayer.SBOM.Set("spdx.json", bom.Format(sbom.SPDXFormat))
 
 		cachedSHA, ok := yarnLayer.Metadata[DependencyCacheKey].(string)
 		if ok && cachedSHA == dependency.SHA256 {
@@ -100,6 +114,10 @@ func Build(
 
 		logger.Action("Completed in %s", duration.Round(time.Millisecond))
 		logger.Break()
+
+		yarnLayer.SBOM.Set("cdx.json", bom.Format(sbom.CycloneDXFormat))
+		yarnLayer.SBOM.Set("syft.json", bom.Format(sbom.SyftFormat))
+		yarnLayer.SBOM.Set("spdx.json", bom.Format(sbom.SPDXFormat))
 
 		yarnLayer.Metadata = map[string]interface{}{
 			DependencyCacheKey: dependency.SHA256,

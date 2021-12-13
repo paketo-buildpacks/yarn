@@ -4,10 +4,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/paketo-buildpacks/packit"
-	"github.com/paketo-buildpacks/packit/chronos"
-	"github.com/paketo-buildpacks/packit/postal"
-	"github.com/paketo-buildpacks/packit/scribe"
+	"github.com/paketo-buildpacks/packit/v2"
+	"github.com/paketo-buildpacks/packit/v2/chronos"
+	"github.com/paketo-buildpacks/packit/v2/postal"
+	"github.com/paketo-buildpacks/packit/v2/sbom"
+	"github.com/paketo-buildpacks/packit/v2/scribe"
 )
 
 //go:generate faux --interface EntryResolver --output fakes/entry_resolver.go
@@ -20,12 +21,17 @@ type EntryResolver interface {
 type DependencyManager interface {
 	Resolve(path, id, version, stack string) (postal.Dependency, error)
 	Deliver(dependency postal.Dependency, cnbPath, layerPath, platformPath string) error
-	GenerateBillOfMaterials(dependencies ...postal.Dependency) []packit.BOMEntry
+}
+
+//go:generate faux --interface SBOMGenerator --output fakes/sbom_generator.go
+type SBOMGenerator interface {
+	GenerateFromDependency(dependency postal.Dependency, dir string) (sbom.SBOM, error)
 }
 
 func Build(
 	entryResolver EntryResolver,
 	dependencyManager DependencyManager,
+	sbomGenerator SBOMGenerator,
 	clock chronos.Clock,
 	logger scribe.Emitter,
 ) packit.BuildFunc {
@@ -52,19 +58,7 @@ func Build(
 			return packit.BuildResult{}, err
 		}
 
-		bom := dependencyManager.GenerateBillOfMaterials(dependency)
-
 		launch, build := entryResolver.MergeLayerTypes("yarn", context.Plan.Entries)
-
-		var buildMetadata = packit.BuildMetadata{}
-		var launchMetadata = packit.LaunchMetadata{}
-		if build {
-			buildMetadata = packit.BuildMetadata{BOM: bom}
-		}
-
-		if launch {
-			launchMetadata = packit.LaunchMetadata{BOM: bom}
-		}
 
 		cachedSHA, ok := yarnLayer.Metadata[DependencyCacheKey].(string)
 		if ok && cachedSHA == dependency.SHA256 {
@@ -75,8 +69,6 @@ func Build(
 
 			return packit.BuildResult{
 				Layers: []packit.Layer{yarnLayer},
-				Build:  buildMetadata,
-				Launch: launchMetadata,
 			}, nil
 		}
 
@@ -101,6 +93,24 @@ func Build(
 		logger.Action("Completed in %s", duration.Round(time.Millisecond))
 		logger.Break()
 
+		logger.Process("Generating SBOM for directory %s", yarnLayer.Path)
+		var sbomContent sbom.SBOM
+		duration, err = clock.Measure(func() error {
+			sbomContent, err = sbomGenerator.GenerateFromDependency(dependency, context.WorkingDir)
+			return err
+		})
+		if err != nil {
+			return packit.BuildResult{}, err
+		}
+
+		logger.Action("Completed in %s", duration.Round(time.Millisecond))
+		logger.Break()
+
+		yarnLayer.SBOM, err = sbomContent.InFormats(context.BuildpackInfo.SBOMFormats...)
+		if err != nil {
+			return packit.BuildResult{}, err
+		}
+
 		yarnLayer.Metadata = map[string]interface{}{
 			DependencyCacheKey: dependency.SHA256,
 			"built_at":         clock.Now().Format(time.RFC3339Nano),
@@ -108,8 +118,6 @@ func Build(
 
 		return packit.BuildResult{
 			Layers: []packit.Layer{yarnLayer},
-			Build:  buildMetadata,
-			Launch: launchMetadata,
 		}, nil
 	}
 }

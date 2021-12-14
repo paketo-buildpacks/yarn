@@ -195,6 +195,9 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 
 			Expect(layer.Name).To(Equal("yarn"))
 			Expect(layer.Path).To(Equal(filepath.Join(layersDir, "yarn")))
+			Expect(layer.Build).To(BeTrue())
+			Expect(layer.Launch).To(BeTrue())
+			Expect(layer.Cache).To(BeTrue())
 			Expect(layer.Metadata).To(Equal(map[string]interface{}{
 				yarn.DependencyCacheKey: "yarn-dependency-sha",
 				"built_at":              timestamp.Format(time.RFC3339Nano),

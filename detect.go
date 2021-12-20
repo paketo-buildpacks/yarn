@@ -1,6 +1,6 @@
 package yarn
 
-import "github.com/paketo-buildpacks/packit/v2"
+import "github.com/paketo-buildpacks/packit"
 
 func Detect() packit.DetectFunc {
 	return func(context packit.DetectContext) (packit.DetectResult, error) {

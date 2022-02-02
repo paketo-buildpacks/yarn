@@ -4,10 +4,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/paketo-buildpacks/packit"
-	"github.com/paketo-buildpacks/packit/chronos"
-	"github.com/paketo-buildpacks/packit/postal"
-	"github.com/paketo-buildpacks/packit/scribe"
+	"github.com/paketo-buildpacks/packit/v2"
+	"github.com/paketo-buildpacks/packit/v2/chronos"
+	"github.com/paketo-buildpacks/packit/v2/postal"
+	"github.com/paketo-buildpacks/packit/v2/sbom"
+	"github.com/paketo-buildpacks/packit/v2/scribe"
 )
 
 //go:generate faux --interface EntryResolver --output fakes/entry_resolver.go
@@ -23,9 +24,15 @@ type DependencyManager interface {
 	GenerateBillOfMaterials(dependencies ...postal.Dependency) []packit.BOMEntry
 }
 
+//go:generate faux --interface SBOMGenerator --output fakes/sbom_generator.go
+type SBOMGenerator interface {
+	GenerateFromDependency(dependency postal.Dependency, dir string) (sbom.SBOM, error)
+}
+
 func Build(
 	entryResolver EntryResolver,
 	dependencyManager DependencyManager,
+	sbomGenerator SBOMGenerator,
 	clock chronos.Clock,
 	logger scribe.Emitter,
 ) packit.BuildFunc {
@@ -97,9 +104,26 @@ func Build(
 		if err != nil {
 			return packit.BuildResult{}, err
 		}
+		logger.Action("Completed in %s", duration.Round(time.Millisecond))
+		logger.Break()
+
+		logger.Process("Generating SBOM for directory %s", yarnLayer.Path)
+		var sbomContent sbom.SBOM
+		duration, err = clock.Measure(func() error {
+			sbomContent, err = sbomGenerator.GenerateFromDependency(dependency, context.WorkingDir)
+			return err
+		})
+		if err != nil {
+			return packit.BuildResult{}, err
+		}
 
 		logger.Action("Completed in %s", duration.Round(time.Millisecond))
 		logger.Break()
+
+		yarnLayer.SBOM, err = sbomContent.InFormats(context.BuildpackInfo.SBOMFormats...)
+		if err != nil {
+			return packit.BuildResult{}, err
+		}
 
 		yarnLayer.Metadata = map[string]interface{}{
 			DependencyCacheKey: dependency.SHA256,

@@ -32,12 +32,11 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 		var (
 			image occam.Image
 
-			name   string
-			source string
+			name    string
+			source  string
+			sbomDir string
 
-			container1 occam.Container
-			container2 occam.Container
-			container3 occam.Container
+			container occam.Container
 		)
 
 		it.Before(func() {
@@ -47,16 +46,19 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 
 			source, err = occam.Source(filepath.Join("testdata", "default_app"))
 			Expect(err).NotTo(HaveOccurred())
+
+			sbomDir, err = os.MkdirTemp("", "sbom")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(os.Chmod(sbomDir, os.ModePerm)).To(Succeed())
 		})
 
 		it.After(func() {
-			Expect(docker.Container.Remove.Execute(container1.ID)).To(Succeed())
-			Expect(docker.Container.Remove.Execute(container2.ID)).To(Succeed())
-			Expect(docker.Container.Remove.Execute(container3.ID)).To(Succeed())
+			Expect(docker.Container.Remove.Execute(container.ID)).To(Succeed())
 
 			Expect(docker.Image.Remove.Execute(image.ID)).To(Succeed())
 			Expect(docker.Volume.Remove.Execute(occam.CacheVolumeNames(name))).To(Succeed())
 			Expect(os.RemoveAll(source)).To(Succeed())
+			Expect(os.RemoveAll(sbomDir)).To(Succeed())
 		})
 
 		it("builds with the defaults", func() {
@@ -68,16 +70,17 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 			image, logs, err = pack.WithNoColor().Build.
 				WithPullPolicy("never").
 				WithBuildpacks(buildpack, buildPlanBuildpack).
+				WithSBOMOutputDir(sbomDir).
 				Execute(name, source)
 			Expect(err).ToNot(HaveOccurred(), logs.String)
 
 			// Ensure yarn is installed correctly
 
-			container1, err = docker.Container.Run.WithCommand("which yarn").Execute(image.ID)
+			container, err = docker.Container.Run.WithCommand("which yarn").Execute(image.ID)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() string {
-				cLogs, err := docker.Container.Logs.Execute(container1.ID)
+				cLogs, err := docker.Container.Logs.Execute(container.ID)
 				Expect(err).NotTo(HaveOccurred())
 				return cLogs.String()
 			}).Should(ContainSubstring("yarn"))
@@ -89,35 +92,16 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 				MatchRegexp(`      Completed in ([0-9]*(\.[0-9]*)?[a-z]+)+`),
 			))
 
-			// check that all expected SBOM files are present
-			container2, err = docker.Container.Run.
-				WithCommand(fmt.Sprintf("ls -al /layers/sbom/launch/%s/yarn/",
-					strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"))).
-				Execute(image.ID)
-			Expect(err).NotTo(HaveOccurred())
-
-			Eventually(func() string {
-				cLogs, err := docker.Container.Logs.Execute(container2.ID)
-				Expect(err).NotTo(HaveOccurred())
-				return cLogs.String()
-			}).Should(And(
-				ContainSubstring("sbom.cdx.json"),
-				ContainSubstring("sbom.spdx.json"),
-				ContainSubstring("sbom.syft.json"),
-			))
+			// check that all required SBOM files are present
+			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.cdx.json")).To(BeARegularFile())
+			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.spdx.json")).To(BeARegularFile())
+			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.syft.json")).To(BeARegularFile())
 
 			// check an SBOM file to make sure it has an entry for yarn
-			container3, err = docker.Container.Run.
-				WithCommand(fmt.Sprintf("cat /layers/sbom/launch/%s/yarn/sbom.cdx.json",
-					strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"))).
-				Execute(image.ID)
+			contents, err := os.ReadFile(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.cdx.json"))
 			Expect(err).NotTo(HaveOccurred())
 
-			Eventually(func() string {
-				cLogs, err := docker.Container.Logs.Execute(container3.ID)
-				Expect(err).NotTo(HaveOccurred())
-				return cLogs.String()
-			}).Should(ContainSubstring(`"name": "Yarn"`))
+			Expect(string(contents)).To(ContainSubstring(`"name": "Yarn"`))
 		})
 	})
 }

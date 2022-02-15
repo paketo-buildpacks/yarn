@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/paketo-buildpacks/occam"
@@ -29,11 +30,13 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 
 	context("when the buildpack is run with pack build", func() {
 		var (
-			image     occam.Image
-			container occam.Container
+			image occam.Image
 
-			name   string
-			source string
+			name    string
+			source  string
+			sbomDir string
+
+			container occam.Container
 		)
 
 		it.Before(func() {
@@ -44,13 +47,18 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 			source, err = occam.Source(filepath.Join("testdata", "default_app"))
 			Expect(err).NotTo(HaveOccurred())
 
+			sbomDir, err = os.MkdirTemp("", "sbom")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(os.Chmod(sbomDir, os.ModePerm)).To(Succeed())
 		})
 
 		it.After(func() {
 			Expect(docker.Container.Remove.Execute(container.ID)).To(Succeed())
+
 			Expect(docker.Image.Remove.Execute(image.ID)).To(Succeed())
 			Expect(docker.Volume.Remove.Execute(occam.CacheVolumeNames(name))).To(Succeed())
 			Expect(os.RemoveAll(source)).To(Succeed())
+			Expect(os.RemoveAll(sbomDir)).To(Succeed())
 		})
 
 		it("builds with the defaults", func() {
@@ -62,8 +70,11 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 			image, logs, err = pack.WithNoColor().Build.
 				WithPullPolicy("never").
 				WithBuildpacks(buildpack, buildPlanBuildpack).
+				WithSBOMOutputDir(sbomDir).
 				Execute(name, source)
 			Expect(err).ToNot(HaveOccurred(), logs.String)
+
+			// Ensure yarn is installed correctly
 
 			container, err = docker.Container.Run.WithCommand("which yarn").Execute(image.ID)
 			Expect(err).NotTo(HaveOccurred())
@@ -80,6 +91,17 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 				MatchRegexp(`    Installing Yarn`),
 				MatchRegexp(`      Completed in ([0-9]*(\.[0-9]*)?[a-z]+)+`),
 			))
+
+			// check that all required SBOM files are present
+			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.cdx.json")).To(BeARegularFile())
+			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.spdx.json")).To(BeARegularFile())
+			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.syft.json")).To(BeARegularFile())
+
+			// check an SBOM file to make sure it has an entry for yarn
+			contents, err := os.ReadFile(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.cdx.json"))
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(string(contents)).To(ContainSubstring(`"name": "Yarn"`))
 		})
 	})
 }

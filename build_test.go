@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/paketo-buildpacks/packit/v2"
 	"github.com/paketo-buildpacks/packit/v2/chronos"
@@ -31,7 +30,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		layersDir         string
 		workingDir        string
 		cnbDir            string
-		timestamp         time.Time
 		entryResolver     *fakes.EntryResolver
 		dependencyManager *fakes.DependencyManager
 		sbomGenerator     *fakes.SBOMGenerator
@@ -51,11 +49,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 
 		workingDir, err = ioutil.TempDir("", "working-dir")
 		Expect(err).NotTo(HaveOccurred())
-
-		timestamp = time.Now()
-		clock := chronos.NewClock(func() time.Time {
-			return timestamp
-		})
 
 		entryResolver = &fakes.EntryResolver{}
 		entryResolver.ResolveCall.Returns.BuildpackPlanEntry = packit.BuildpackPlanEntry{
@@ -89,7 +82,11 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		sbomGenerator.GenerateFromDependencyCall.Returns.SBOM = sbom.SBOM{}
 
 		buffer = bytes.NewBuffer(nil)
-		build = yarn.Build(entryResolver, dependencyManager, sbomGenerator, clock, scribe.NewEmitter(buffer))
+		build = yarn.Build(entryResolver,
+			dependencyManager,
+			sbomGenerator,
+			chronos.DefaultClock,
+			scribe.NewEmitter(buffer))
 	})
 
 	it.After(func() {
@@ -127,7 +124,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		Expect(layer.Path).To(Equal(filepath.Join(layersDir, "yarn")))
 		Expect(layer.Metadata).To(Equal(map[string]interface{}{
 			yarn.DependencyCacheKey: "yarn-dependency-sha",
-			"built_at":              timestamp.Format(time.RFC3339Nano),
 		}))
 
 		Expect(layer.SBOM.Formats()).To(Equal([]packit.SBOMFormat{
@@ -228,7 +224,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			Expect(layer.Cache).To(BeTrue())
 			Expect(layer.Metadata).To(Equal(map[string]interface{}{
 				yarn.DependencyCacheKey: "yarn-dependency-sha",
-				"built_at":              timestamp.Format(time.RFC3339Nano),
 			}))
 		})
 	})

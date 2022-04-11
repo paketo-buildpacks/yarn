@@ -92,7 +92,7 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 				MatchRegexp(`    Installing Yarn`),
 				MatchRegexp(`      Completed in ([0-9]*(\.[0-9]*)?[a-z]+)+`),
 				"",
-				fmt.Sprintf("  Generating SBOM for directory /layers/%s/yarn", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_")),
+				fmt.Sprintf("  Generating SBOM for /layers/%s/yarn", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_")),
 				MatchRegexp(`      Completed in \d+(\.?\d+)*`),
 				"",
 				"  Writing SBOM in the following format(s):",

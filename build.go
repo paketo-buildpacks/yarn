@@ -1,7 +1,10 @@
 package yarn
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/paketo-buildpacks/packit/v2"
@@ -107,23 +110,33 @@ func Build(
 		logger.Action("Completed in %s", duration.Round(time.Millisecond))
 		logger.Break()
 
-		logger.GeneratingSBOM(yarnLayer.Path)
-		var sbomContent sbom.SBOM
-		duration, err = clock.Measure(func() error {
-			sbomContent, err = sbomGenerator.GenerateFromDependency(dependency, context.WorkingDir)
-			return err
-		})
+		sbomDisabled, err := checkSbomDisabled()
 		if err != nil {
 			return packit.BuildResult{}, err
 		}
 
-		logger.Action("Completed in %s", duration.Round(time.Millisecond))
-		logger.Break()
+		if sbomDisabled {
+			logger.Subprocess("Skipping SBOM generation for Yarn")
+			logger.Break()
+		} else {
+			logger.GeneratingSBOM(yarnLayer.Path)
+			var sbomContent sbom.SBOM
+			duration, err = clock.Measure(func() error {
+				sbomContent, err = sbomGenerator.GenerateFromDependency(dependency, context.WorkingDir)
+				return err
+			})
+			if err != nil {
+				return packit.BuildResult{}, err
+			}
 
-		logger.FormattingSBOM(context.BuildpackInfo.SBOMFormats...)
-		yarnLayer.SBOM, err = sbomContent.InFormats(context.BuildpackInfo.SBOMFormats...)
-		if err != nil {
-			return packit.BuildResult{}, err
+			logger.Action("Completed in %s", duration.Round(time.Millisecond))
+			logger.Break()
+
+			logger.FormattingSBOM(context.BuildpackInfo.SBOMFormats...)
+			yarnLayer.SBOM, err = sbomContent.InFormats(context.BuildpackInfo.SBOMFormats...)
+			if err != nil {
+				return packit.BuildResult{}, err
+			}
 		}
 
 		yarnLayer.Metadata = map[string]interface{}{
@@ -136,4 +149,15 @@ func Build(
 			Launch: launchMetadata,
 		}, nil
 	}
+}
+
+func checkSbomDisabled() (bool, error) {
+	if disableStr, ok := os.LookupEnv("BP_DISABLE_SBOM"); ok {
+		disable, err := strconv.ParseBool(disableStr)
+		if err != nil {
+			return false, fmt.Errorf("failed to parse BP_DISABLE_SBOM value %s: %w", disableStr, err)
+		}
+		return disable, nil
+	}
+	return false, nil
 }

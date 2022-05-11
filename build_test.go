@@ -349,5 +349,27 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 				Expect(err).To(MatchError(ContainSubstring("failed to generate SBOM")))
 			})
 		})
+
+		context("when BP_DISABLE_SBOM is set incorrectly", func() {
+			it.Before(func() {
+				os.Setenv("BP_DISABLE_SBOM", "not-a-bool")
+			})
+
+			it.After(func() {
+				os.Unsetenv("BP_DISABLE_SBOM")
+			})
+
+			it("returns an error", func() {
+				_, err := build(packit.BuildContext{
+					BuildpackInfo: packit.BuildpackInfo{
+						Name:        "Some Buildpack",
+						Version:     "some-version",
+						SBOMFormats: []string{sbom.CycloneDXFormat, sbom.SPDXFormat},
+					},
+				})
+
+				Expect(err).To(MatchError(ContainSubstring("failed to parse BP_DISABLE_SBOM")))
+			})
+		})
 	})
 }

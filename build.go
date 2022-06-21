@@ -9,16 +9,11 @@ import (
 
 	"github.com/paketo-buildpacks/packit/v2"
 	"github.com/paketo-buildpacks/packit/v2/chronos"
+	"github.com/paketo-buildpacks/packit/v2/draft"
 	"github.com/paketo-buildpacks/packit/v2/postal"
 	"github.com/paketo-buildpacks/packit/v2/sbom"
 	"github.com/paketo-buildpacks/packit/v2/scribe"
 )
-
-//go:generate faux --interface EntryResolver --output fakes/entry_resolver.go
-type EntryResolver interface {
-	Resolve(name string, entries []packit.BuildpackPlanEntry, priorites []interface{}) (packit.BuildpackPlanEntry, []packit.BuildpackPlanEntry)
-	MergeLayerTypes(name string, entries []packit.BuildpackPlanEntry) (launch, build bool)
-}
 
 //go:generate faux --interface DependencyManager --output fakes/dependency_manager.go
 type DependencyManager interface {
@@ -33,7 +28,6 @@ type SBOMGenerator interface {
 }
 
 func Build(
-	entryResolver EntryResolver,
 	dependencyManager DependencyManager,
 	sbomGenerator SBOMGenerator,
 	clock chronos.Clock,
@@ -47,7 +41,8 @@ func Build(
 			return packit.BuildResult{}, err
 		}
 
-		entry, _ := entryResolver.Resolve("yarn", context.Plan.Entries, nil)
+		planner := draft.NewPlanner()
+		entry, _ := planner.Resolve("yarn", context.Plan.Entries, nil)
 		version, ok := entry.Metadata["version"].(string)
 		if !ok {
 			version = "default"
@@ -64,7 +59,7 @@ func Build(
 
 		bom := dependencyManager.GenerateBillOfMaterials(dependency)
 
-		launch, build := entryResolver.MergeLayerTypes("yarn", context.Plan.Entries)
+		launch, build := planner.MergeLayerTypes("yarn", context.Plan.Entries)
 
 		var buildMetadata = packit.BuildMetadata{}
 		var launchMetadata = packit.LaunchMetadata{}

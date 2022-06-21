@@ -29,7 +29,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		layersDir         string
 		workingDir        string
 		cnbDir            string
-		entryResolver     *fakes.EntryResolver
 		dependencyManager *fakes.DependencyManager
 		sbomGenerator     *fakes.SBOMGenerator
 
@@ -49,11 +48,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 
 		workingDir, err = os.MkdirTemp("", "working-dir")
 		Expect(err).NotTo(HaveOccurred())
-
-		entryResolver = &fakes.EntryResolver{}
-		entryResolver.ResolveCall.Returns.BuildpackPlanEntry = packit.BuildpackPlanEntry{
-			Name: "yarn",
-		}
 
 		dependencyManager = &fakes.DependencyManager{}
 		dependencyManager.ResolveCall.Returns.Dependency = postal.Dependency{
@@ -103,8 +97,7 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			Layers:   packit.Layers{Path: layersDir},
 		}
 
-		build = yarn.Build(entryResolver,
-			dependencyManager,
+		build = yarn.Build(dependencyManager,
 			sbomGenerator,
 			chronos.DefaultClock,
 			scribe.NewEmitter(buffer))
@@ -138,16 +131,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 				Extension: sbom.Format(sbom.SPDXFormat).Extension(),
 				Content:   sbom.NewFormattedReader(sbom.SBOM{}, sbom.SPDXFormat),
 			},
-		}))
-
-		Expect(entryResolver.ResolveCall.Receives.Name).To(Equal("yarn"))
-		Expect(entryResolver.ResolveCall.Receives.Entries).To(Equal([]packit.BuildpackPlanEntry{
-			{Name: "yarn"},
-		}))
-
-		Expect(entryResolver.MergeLayerTypesCall.Receives.Name).To(Equal("yarn"))
-		Expect(entryResolver.MergeLayerTypesCall.Receives.Entries).To(Equal([]packit.BuildpackPlanEntry{
-			{Name: "yarn"},
 		}))
 
 		Expect(dependencyManager.ResolveCall.Receives.Path).To(Equal(filepath.Join(cnbDir, "buildpack.toml")))
@@ -194,9 +177,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 
 	context("when the plan entry requires the dependency during the build and launch phases", func() {
 		it.Before(func() {
-			entryResolver.MergeLayerTypesCall.Returns.Launch = true
-			entryResolver.MergeLayerTypesCall.Returns.Build = true
-
 			buildContext.Plan.Entries[0].Metadata = map[string]interface{}{
 				"build":  true,
 				"launch": true,

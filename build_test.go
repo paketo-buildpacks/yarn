@@ -35,7 +35,8 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 
 		buffer *bytes.Buffer
 
-		build packit.BuildFunc
+		buildContext packit.BuildContext
+		build        packit.BuildFunc
 	)
 
 	it.Before(func() {
@@ -81,21 +82,8 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		sbomGenerator.GenerateFromDependencyCall.Returns.SBOM = sbom.SBOM{}
 
 		buffer = bytes.NewBuffer(nil)
-		build = yarn.Build(entryResolver,
-			dependencyManager,
-			sbomGenerator,
-			chronos.DefaultClock,
-			scribe.NewEmitter(buffer))
-	})
 
-	it.After(func() {
-		Expect(os.RemoveAll(layersDir)).To(Succeed())
-		Expect(os.RemoveAll(cnbDir)).To(Succeed())
-		Expect(os.RemoveAll(workingDir)).To(Succeed())
-	})
-
-	it("returns a result that installs yarn", func() {
-		result, err := build(packit.BuildContext{
+		buildContext = packit.BuildContext{
 			WorkingDir: workingDir,
 			CNBPath:    cnbDir,
 			Stack:      "some-stack",
@@ -113,7 +101,23 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			},
 			Platform: packit.Platform{Path: "platform"},
 			Layers:   packit.Layers{Path: layersDir},
-		})
+		}
+
+		build = yarn.Build(entryResolver,
+			dependencyManager,
+			sbomGenerator,
+			chronos.DefaultClock,
+			scribe.NewEmitter(buffer))
+	})
+
+	it.After(func() {
+		Expect(os.RemoveAll(layersDir)).To(Succeed())
+		Expect(os.RemoveAll(cnbDir)).To(Succeed())
+		Expect(os.RemoveAll(workingDir)).To(Succeed())
+	})
+
+	it("returns a result that installs yarn", func() {
+		result, err := build(buildContext)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(result.Layers).To(HaveLen(1))
@@ -192,25 +196,15 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		it.Before(func() {
 			entryResolver.MergeLayerTypesCall.Returns.Launch = true
 			entryResolver.MergeLayerTypesCall.Returns.Build = true
+
+			buildContext.Plan.Entries[0].Metadata = map[string]interface{}{
+				"build":  true,
+				"launch": true,
+			}
 		})
 
 		it("makes the layer available in those phases", func() {
-			result, err := build(packit.BuildContext{
-				CNBPath: cnbDir,
-				Plan: packit.BuildpackPlan{
-					Entries: []packit.BuildpackPlanEntry{
-						{
-							Name: "yarn",
-							Metadata: map[string]interface{}{
-								"build":  true,
-								"launch": true,
-							},
-						},
-					},
-				},
-				Layers: packit.Layers{Path: layersDir},
-				Stack:  "some-stack",
-			})
+			result, err := build(buildContext)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(result.Layers).To(HaveLen(1))
@@ -235,16 +229,7 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			})
 
 			it("returns an error", func() {
-				_, err := build(packit.BuildContext{
-					CNBPath: cnbDir,
-					Plan: packit.BuildpackPlan{
-						Entries: []packit.BuildpackPlanEntry{
-							{Name: "yarn"},
-						},
-					},
-					Layers: packit.Layers{Path: layersDir},
-					Stack:  "some-stack",
-				})
+				_, err := build(buildContext)
 				Expect(err).To(MatchError(ContainSubstring("failed to parse layer content metadata")))
 			})
 		})
@@ -255,16 +240,7 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			})
 
 			it("returns an error", func() {
-				_, err := build(packit.BuildContext{
-					CNBPath: cnbDir,
-					Plan: packit.BuildpackPlan{
-						Entries: []packit.BuildpackPlanEntry{
-							{Name: "yarn"},
-						},
-					},
-					Layers: packit.Layers{Path: layersDir},
-					Stack:  "some-stack",
-				})
+				_, err := build(buildContext)
 				Expect(err).To(MatchError("failed to resolve dependency"))
 			})
 		})
@@ -279,15 +255,7 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			})
 
 			it("returns an error", func() {
-				_, err := build(packit.BuildContext{
-					CNBPath: cnbDir,
-					Plan: packit.BuildpackPlan{
-						Entries: []packit.BuildpackPlanEntry{
-							{Name: "yarn"},
-						},
-					},
-					Layers: packit.Layers{Path: layersDir},
-				})
+				_, err := build(buildContext)
 				Expect(err).To(MatchError(ContainSubstring("permission denied")))
 			})
 		})
@@ -298,33 +266,18 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			})
 
 			it("returns an error", func() {
-				_, err := build(packit.BuildContext{
-					CNBPath: cnbDir,
-					Plan: packit.BuildpackPlan{
-						Entries: []packit.BuildpackPlanEntry{
-							{Name: "yarn"},
-						},
-					},
-					Layers: packit.Layers{Path: layersDir},
-					Stack:  "some-stack",
-				})
+				_, err := build(buildContext)
 				Expect(err).To(MatchError("failed to install dependency"))
 			})
 		})
 
 		context("when generating the SBOM returns an error", func() {
+			it.Before(func() {
+				buildContext.BuildpackInfo = packit.BuildpackInfo{SBOMFormats: []string{"random-format"}}
+			})
+
 			it("returns an error", func() {
-				_, err := build(packit.BuildContext{
-					BuildpackInfo: packit.BuildpackInfo{SBOMFormats: []string{"random-format"}},
-					CNBPath:       cnbDir,
-					Plan: packit.BuildpackPlan{
-						Entries: []packit.BuildpackPlanEntry{
-							{Name: "yarn"},
-						},
-					},
-					Layers: packit.Layers{Path: layersDir},
-					Stack:  "some-stack",
-				})
+				_, err := build(buildContext)
 				Expect(err).To(MatchError("unsupported SBOM format: 'random-format'"))
 			})
 		})
@@ -335,16 +288,7 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			})
 
 			it("returns an error", func() {
-				_, err := build(packit.BuildContext{
-					CNBPath: cnbDir,
-					Plan: packit.BuildpackPlan{
-						Entries: []packit.BuildpackPlanEntry{
-							{Name: "yarn"},
-						},
-					},
-					Layers: packit.Layers{Path: layersDir},
-					Stack:  "some-stack",
-				})
+				_, err := build(buildContext)
 				Expect(err).To(MatchError(ContainSubstring("failed to generate SBOM")))
 			})
 		})
@@ -359,14 +303,7 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			})
 
 			it("returns an error", func() {
-				_, err := build(packit.BuildContext{
-					BuildpackInfo: packit.BuildpackInfo{
-						Name:        "Some Buildpack",
-						Version:     "some-version",
-						SBOMFormats: []string{sbom.CycloneDXFormat, sbom.SPDXFormat},
-					},
-				})
-
+				_, err := build(buildContext)
 				Expect(err).To(MatchError(ContainSubstring("failed to parse BP_DISABLE_SBOM")))
 			})
 		})

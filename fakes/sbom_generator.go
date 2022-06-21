@@ -9,7 +9,7 @@ import (
 
 type SBOMGenerator struct {
 	GenerateFromDependencyCall struct {
-		sync.Mutex
+		mutex     sync.Mutex
 		CallCount int
 		Receives  struct {
 			Dependency postal.Dependency
@@ -24,8 +24,8 @@ type SBOMGenerator struct {
 }
 
 func (f *SBOMGenerator) GenerateFromDependency(param1 postal.Dependency, param2 string) (sbom.SBOM, error) {
-	f.GenerateFromDependencyCall.Lock()
-	defer f.GenerateFromDependencyCall.Unlock()
+	f.GenerateFromDependencyCall.mutex.Lock()
+	defer f.GenerateFromDependencyCall.mutex.Unlock()
 	f.GenerateFromDependencyCall.CallCount++
 	f.GenerateFromDependencyCall.Receives.Dependency = param1
 	f.GenerateFromDependencyCall.Receives.Dir = param2

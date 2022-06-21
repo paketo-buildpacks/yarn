@@ -22,16 +22,16 @@ file that looks like the following:
   # for deprecation.
   name = "yarn"
 
-  # The version of the Yarn dependency is not required. In the case it
-  # is not specified, the buildpack will provide the default version, which can
-  # be seen in the buildpack.toml file.
-  # If you wish to request a specific version, the buildpack supports
-  # specifying a semver constraint in the form of "1.*", "1.22.*", or even
-  # "1.22.4".
-  version = "1.22.4"
-
   # The Yarn buildpack supports some non-required metadata options.
   [requires.metadata]
+
+    # The version of the Yarn dependency is not required. In the case it
+    # is not specified, the buildpack will provide the default version, which can
+    # be seen in the buildpack.toml file.
+    # If you wish to request a specific version, the buildpack supports
+    # specifying a semver constraint in the form of "1.*", "1.22.*", or even
+    # "1.22.4".
+    version = "1.22.4"
 
     # Setting the build flag to true will ensure that the yarn
     # depdendency is available on the $PATH for subsequent buildpacks during
@@ -50,15 +50,18 @@ file that looks like the following:
 
 To package this buildpack for consumption:
 
-```
+```shell
 $ ./scripts/package.sh --version <version-number>
 ```
 
 This will create a `buildpackage.cnb` file under the `build` directory which you
 can use to build your app as follows:
-```
-pack build <app-name> -p <path-to-app> -b <path/to/node-engine.cnb> -b build/buildpackage.cnb \
--b <path/to/node-and-yarn-requiring-cnb>
+```shell
+pack build <app-name> \
+  --path <path-to-app> \
+  --buildpack <path/to/node-engine.cnb> \
+  --buildpack build/buildpackage.cnb \
+  --buildpack <path/to/cnb-that-requires-node-and-yarn>
 ```
 
 Though the API of this buildpack does not require `node`, yarn is unusable without node.
@@ -70,11 +73,11 @@ There are no extra configurations for this buildpack based on `buildpack.yml`.
 ## Run Tests
 
 To run all unit tests, run:
-```
+```shell
 ./scripts/unit.sh
 ```
 
 To run all integration tests, run:
-```
+```shell
 /scripts/integration.sh
 ```

@@ -168,7 +168,7 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			URI:     "yarn-dependency-uri",
 			Version: "yarn-dependency-version",
 		}))
-		Expect(sbomGenerator.GenerateFromDependencyCall.Receives.Dir).To(Equal(workingDir))
+		Expect(sbomGenerator.GenerateFromDependencyCall.Receives.Dir).To(Equal(layer.Path))
 
 		Expect(buffer.String()).To(ContainSubstring("Some Buildpack some-version"))
 		Expect(buffer.String()).To(ContainSubstring("Executing build process"))

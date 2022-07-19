@@ -25,7 +25,7 @@ api = "0.7"
     sha256 = "2f6ed610be8b877d2abadafde43044280ee73a88e82787853450d9558fb15e70"
     source = "https://github.com/yarnpkg/yarn/releases/download/v1.22.16/yarn-v1.22.16.tar.gz"
     source_sha256 = "c0369d6a9aeb4f3b86095c6e6f64de7a7555a888e03260c3f02727636e1f1693"
-    stacks = ["io.buildpacks.stacks.bionic"]
+    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy"]
     uri = "https://deps.paketo.io/yarn/yarn_1.22.16_linux_noarch_bionic_2f6ed610.tgz"
     version = "1.22.16"
 
@@ -38,7 +38,7 @@ api = "0.7"
     sha256 = "812ad0ae25801885e0422d018d1e79a6ac5903b613621cb424159518631f8bfd"
     source = "https://github.com/yarnpkg/yarn/releases/download/v1.22.17/yarn-v1.22.17.tar.gz"
     source_sha256 = "267982c61119a055ba2b23d9cf90b02d3d16c202c03cb0c3a53b9633eae37249"
-    stacks = ["io.buildpacks.stacks.bionic"]
+    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy"]
     uri = "https://deps.paketo.io/yarn/yarn_1.22.17_linux_noarch_bionic_812ad0ae.tgz"
     version = "1.22.17"
 
@@ -49,3 +49,6 @@ api = "0.7"
 
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
+
+[[stacks]]
+  id = "io.buildpacks.stacks.jammy"

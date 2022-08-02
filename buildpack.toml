@@ -22,11 +22,11 @@ api = "0.7"
     licenses = ["BSD-2-Clause", "BSD-2-Clause-NetBSD"]
     name = "Yarn"
     purl = "pkg:generic/yarn@1.22.16?checksum=c0369d6a9aeb4f3b86095c6e6f64de7a7555a888e03260c3f02727636e1f1693&download_url=https://github.com/yarnpkg/yarn/releases/download/v1.22.16/yarn-v1.22.16.tar.gz"
-    sha256 = "2f6ed610be8b877d2abadafde43044280ee73a88e82787853450d9558fb15e70"
+    sha256 = "bb29f4afa3d0a0b39d35ae66eb315948dc01f247d99944445038bbc88a9e5c57"
     source = "https://github.com/yarnpkg/yarn/releases/download/v1.22.16/yarn-v1.22.16.tar.gz"
     source_sha256 = "c0369d6a9aeb4f3b86095c6e6f64de7a7555a888e03260c3f02727636e1f1693"
     stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy"]
-    uri = "https://deps.paketo.io/yarn/yarn_1.22.16_linux_noarch_bionic_2f6ed610.tgz"
+    uri = "https://deps.paketo.io/yarn/yarn_1.22.16_linux_noarch_bionic_bb29f4af.tgz"
     version = "1.22.16"
 
   [[metadata.dependencies]]

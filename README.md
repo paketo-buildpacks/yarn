@@ -1,4 +1,4 @@
-# Yarn Cloud Native Buildpack
+# Paketo Buildpack for Yarn
 
 The Yarn CNB provides the [Yarn Package manager](https://yarnpkg.com). The
 buildpack installs `yarn` onto the `$PATH` which makes it available for

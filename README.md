@@ -66,10 +66,6 @@ pack build <app-name> \
 
 Though the API of this buildpack does not require `node`, yarn is unusable without node.
 
-## `buildpack.yml` Configurations
-
-There are no extra configurations for this buildpack based on `buildpack.yml`.
-
 ## Run Tests
 
 To run all unit tests, run:

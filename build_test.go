@@ -51,12 +51,12 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 
 		dependencyManager = &fakes.DependencyManager{}
 		dependencyManager.ResolveCall.Returns.Dependency = postal.Dependency{
-			ID:      "yarn",
-			Name:    "yarn-dependency-name",
-			SHA256:  "yarn-dependency-sha",
-			Stacks:  []string{"some-stack"},
-			URI:     "yarn-dependency-uri",
-			Version: "yarn-dependency-version",
+			ID:       "yarn",
+			Name:     "yarn-dependency-name",
+			Checksum: "sha256:yarn-dependency-sha",
+			Stacks:   []string{"some-stack"},
+			URI:      "yarn-dependency-uri",
+			Version:  "yarn-dependency-version",
 		}
 		dependencyManager.GenerateBillOfMaterialsCall.Returns.BOMEntrySlice = []packit.BOMEntry{
 			{
@@ -119,7 +119,7 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		Expect(layer.Name).To(Equal("yarn"))
 		Expect(layer.Path).To(Equal(filepath.Join(layersDir, "yarn")))
 		Expect(layer.Metadata).To(Equal(map[string]interface{}{
-			yarn.DependencyCacheKey: "yarn-dependency-sha",
+			yarn.DependencyCacheKey: "sha256:yarn-dependency-sha",
 		}))
 
 		Expect(layer.SBOM.Formats()).To(Equal([]packit.SBOMFormat{
@@ -138,12 +138,12 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		Expect(dependencyManager.ResolveCall.Receives.Stack).To(Equal("some-stack"))
 
 		Expect(dependencyManager.DeliverCall.Receives.Dependency).To(Equal(postal.Dependency{
-			ID:      "yarn",
-			Name:    "yarn-dependency-name",
-			SHA256:  "yarn-dependency-sha",
-			Stacks:  []string{"some-stack"},
-			URI:     "yarn-dependency-uri",
-			Version: "yarn-dependency-version",
+			ID:       "yarn",
+			Name:     "yarn-dependency-name",
+			Checksum: "sha256:yarn-dependency-sha",
+			Stacks:   []string{"some-stack"},
+			URI:      "yarn-dependency-uri",
+			Version:  "yarn-dependency-version",
 		}))
 		Expect(dependencyManager.DeliverCall.Receives.CnbPath).To(Equal(cnbDir))
 		Expect(dependencyManager.DeliverCall.Receives.LayerPath).To(Equal(filepath.Join(layersDir, "yarn")))
@@ -151,22 +151,22 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 
 		// Legacy SBOM
 		Expect(dependencyManager.GenerateBillOfMaterialsCall.Receives.Dependencies).To(Equal([]postal.Dependency{{
-			ID:      "yarn",
-			Name:    "yarn-dependency-name",
-			SHA256:  "yarn-dependency-sha",
-			Stacks:  []string{"some-stack"},
-			URI:     "yarn-dependency-uri",
-			Version: "yarn-dependency-version",
+			ID:       "yarn",
+			Name:     "yarn-dependency-name",
+			Checksum: "sha256:yarn-dependency-sha",
+			Stacks:   []string{"some-stack"},
+			URI:      "yarn-dependency-uri",
+			Version:  "yarn-dependency-version",
 		},
 		}))
 
 		Expect(sbomGenerator.GenerateFromDependencyCall.Receives.Dependency).To(Equal(postal.Dependency{
-			ID:      "yarn",
-			Name:    "yarn-dependency-name",
-			SHA256:  "yarn-dependency-sha",
-			Stacks:  []string{"some-stack"},
-			URI:     "yarn-dependency-uri",
-			Version: "yarn-dependency-version",
+			ID:       "yarn",
+			Name:     "yarn-dependency-name",
+			Checksum: "sha256:yarn-dependency-sha",
+			Stacks:   []string{"some-stack"},
+			URI:      "yarn-dependency-uri",
+			Version:  "yarn-dependency-version",
 		}))
 		Expect(sbomGenerator.GenerateFromDependencyCall.Receives.Dir).To(Equal(layer.Path))
 
@@ -196,7 +196,7 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			Expect(layer.Launch).To(BeTrue())
 			Expect(layer.Cache).To(BeTrue())
 			Expect(layer.Metadata).To(Equal(map[string]interface{}{
-				yarn.DependencyCacheKey: "yarn-dependency-sha",
+				yarn.DependencyCacheKey: "sha256:yarn-dependency-sha",
 			}))
 		})
 	})

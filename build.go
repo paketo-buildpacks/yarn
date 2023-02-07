@@ -72,7 +72,7 @@ func Build(
 		}
 
 		cachedSHA, ok := yarnLayer.Metadata[DependencyCacheKey].(string)
-		if ok && cachedSHA == dependency.SHA256 {
+		if ok && postal.Checksum(dependency.Checksum).MatchString(cachedSHA) {
 			logger.Process("Reusing cached layer %s", yarnLayer.Path)
 			logger.Break()
 
@@ -135,7 +135,7 @@ func Build(
 		}
 
 		yarnLayer.Metadata = map[string]interface{}{
-			DependencyCacheKey: dependency.SHA256,
+			DependencyCacheKey: dependency.Checksum,
 		}
 
 		return packit.BuildResult{

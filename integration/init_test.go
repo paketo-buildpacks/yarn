@@ -15,59 +15,77 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var (
-	buildpack          string
-	buildPlanBuildpack string
-	offlineBuildpack   string
-	root               string
-
-	buildpackInfo struct {
-		Buildpack struct {
-			ID   string
-			Name string
+var settings struct {
+	Buildpacks struct {
+		BuildPlan struct {
+			Online string
+		}
+		Yarn struct {
+			Online  string
+			Offline string
 		}
 	}
-)
+	Extensions struct {
+		UbiNodejsExtension struct {
+			Online string
+		}
+	}
+	Config struct {
+		BuildPlan          string `json:"buildplan"`
+		UbiNodejsExtension string `json:"ubi-nodejs-extension"`
+	}
+	Buildpack struct {
+		ID   string
+		Name string
+	}
+}
 
 func TestIntegration(t *testing.T) {
 	var err error
 
 	Expect := NewWithT(t).Expect
 
-	var config struct {
-		BuildPlan string `json:"buildplan"`
-	}
-
 	file, err := os.Open("../integration.json")
 	Expect(err).NotTo(HaveOccurred())
 	defer file.Close()
 
-	Expect(json.NewDecoder(file).Decode(&config)).To(Succeed())
+	Expect(json.NewDecoder(file).Decode(&settings.Config)).To(Succeed())
 
 	file, err = os.Open("../buildpack.toml")
 	Expect(err).NotTo(HaveOccurred())
 
-	_, err = toml.NewDecoder(file).Decode(&buildpackInfo)
+	_, err = toml.NewDecoder(file).Decode(&settings)
 	Expect(err).NotTo(HaveOccurred())
 
-	root, err = filepath.Abs("./..")
+	root, err := filepath.Abs("./..")
 	Expect(err).ToNot(HaveOccurred())
 
 	buildpackStore := occam.NewBuildpackStore()
 
-	buildpack, err = buildpackStore.Get.
+	pack := occam.NewPack()
+
+	builder, err := pack.Builder.Inspect.Execute()
+	Expect(err).NotTo(HaveOccurred())
+
+	if builder.BuilderName == "index.docker.io/paketocommunity/builder-ubi-buildpackless-base:latest" {
+		settings.Extensions.UbiNodejsExtension.Online, err = buildpackStore.Get.
+			Execute(settings.Config.UbiNodejsExtension)
+		Expect(err).ToNot(HaveOccurred())
+	}
+
+	settings.Buildpacks.Yarn.Online, err = buildpackStore.Get.
 		WithVersion("1.2.3").
 		Execute(root)
 	Expect(err).NotTo(HaveOccurred())
 
-	offlineBuildpack, err = buildpackStore.Get.
+	settings.Buildpacks.Yarn.Offline, err = buildpackStore.Get.
 		WithOfflineDependencies().
 		WithVersion("1.2.3").
 		Execute(root)
 	Expect(err).NotTo(HaveOccurred())
 
-	buildPlanBuildpack, err = buildpackStore.Get.
-		Execute(config.BuildPlan)
+	settings.Buildpacks.BuildPlan.Online, err = buildpackStore.Get.
+		Execute(settings.Config.BuildPlan)
 	Expect(err).NotTo(HaveOccurred())
 
 	SetDefaultEventuallyTimeout(10 * time.Second)

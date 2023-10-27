@@ -25,6 +25,8 @@ func testRebuildLayerReuse(t *testing.T, context spec.G, it spec.S) {
 
 		name   string
 		source string
+
+		pullPolicy = "never"
 	)
 
 	it.Before(func() {
@@ -36,6 +38,10 @@ func testRebuildLayerReuse(t *testing.T, context spec.G, it spec.S) {
 		pack = occam.NewPack()
 		imageIDs = map[string]struct{}{}
 		containerIDs = map[string]struct{}{}
+
+		if settings.Extensions.UbiNodejsExtension.Online != "" {
+			pullPolicy = "always"
+		}
 	})
 
 	it.After(func() {
@@ -64,10 +70,13 @@ func testRebuildLayerReuse(t *testing.T, context spec.G, it spec.S) {
 			Expect(err).NotTo(HaveOccurred())
 
 			build := pack.WithNoColor().Build.
-				WithPullPolicy("never").
+				WithExtensions(
+					settings.Extensions.UbiNodejsExtension.Online,
+				).
+				WithPullPolicy(pullPolicy).
 				WithBuildpacks(
-					buildpack,
-					buildPlanBuildpack,
+					settings.Buildpacks.Yarn.Online,
+					settings.Buildpacks.BuildPlan.Online,
 				)
 
 			firstImage, logs, err = build.Execute(name, source)
@@ -77,7 +86,7 @@ func testRebuildLayerReuse(t *testing.T, context spec.G, it spec.S) {
 
 			Expect(firstImage.Buildpacks).To(HaveLen(2))
 
-			Expect(firstImage.Buildpacks[0].Key).To(Equal(buildpackInfo.Buildpack.ID))
+			Expect(firstImage.Buildpacks[0].Key).To(Equal(settings.Buildpack.ID))
 			Expect(firstImage.Buildpacks[0].Layers).To(HaveKey("yarn"))
 
 			Expect(logs.String()).To(ContainSubstring("  Executing build process"))
@@ -90,11 +99,11 @@ func testRebuildLayerReuse(t *testing.T, context spec.G, it spec.S) {
 
 			Expect(secondImage.Buildpacks).To(HaveLen(2))
 
-			Expect(secondImage.Buildpacks[0].Key).To(Equal(buildpackInfo.Buildpack.ID))
+			Expect(secondImage.Buildpacks[0].Key).To(Equal(settings.Buildpack.ID))
 			Expect(secondImage.Buildpacks[0].Layers).To(HaveKey("yarn"))
 
 			Expect(logs.String()).NotTo(ContainSubstring("  Executing build process"))
-			Expect(logs.String()).To(ContainSubstring(fmt.Sprintf("  Reusing cached layer /layers/%s/yarn", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"))))
+			Expect(logs.String()).To(ContainSubstring(fmt.Sprintf("  Reusing cached layer /layers/%s/yarn", strings.ReplaceAll(settings.Buildpack.ID, "/", "_"))))
 
 			Expect(secondImage.Buildpacks[0].Layers["yarn"].SHA).To(Equal(firstImage.Buildpacks[0].Layers["yarn"].SHA))
 		})

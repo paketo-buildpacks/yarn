@@ -25,7 +25,7 @@ api = "0.7"
     checksum = "sha256:77987b1ade01c6fe27ff8d081bb30d97b115bb9962bc2a98765b120dd7ef714d"
     source = "https://github.com/yarnpkg/yarn/releases/download/v1.22.18/yarn-v1.22.18.tar.gz"
     source-checksum = "sha256:816e5c073b3d35936a398d1fe769ebbcd517298e3510b649e8fc67cd3a62e113"
-    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy","io.buildpacks.stacks.ubi8"]
+    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy","io.buildpacks.stacks.ubi8", "*"]
     uri = "https://deps.paketo.io/yarn/yarn_1.22.18_linux_noarch_bionic_77987b1a.tgz"
     version = "1.22.18"
 
@@ -38,7 +38,7 @@ api = "0.7"
     checksum = "sha256:3235ba55a7e669476697fe4506df7fe5179a4448b2c22c96039ff6800c9a7daa"
     source = "https://github.com/yarnpkg/yarn/releases/download/v1.22.19/yarn-v1.22.19.tar.gz"
     source-checksum = "sha256:732620bac8b1690d507274f025f3c6cfdc3627a84d9642e38a07452cc00e0f2e"
-    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "io.buildpacks.stacks.ubi8"]
+    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "io.buildpacks.stacks.ubi8", "*"]
     uri = "https://deps.paketo.io/yarn/yarn_1.22.19_linux_noarch_bionic_3235ba55.tgz"
     version = "1.22.19"
 

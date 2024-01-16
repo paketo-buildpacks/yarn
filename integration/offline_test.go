@@ -26,6 +26,12 @@ func testOffline(t *testing.T, context spec.G, it spec.S) {
 	})
 
 	context("when offline", func() {
+		//UBI does not support offline installation at the moment,
+		//so we are skipping it.
+		if settings.Extensions.UbiNodejsExtension.Online != "" {
+			return
+		}
+
 		var (
 			image     occam.Image
 			container occam.Container
@@ -54,10 +60,13 @@ func testOffline(t *testing.T, context spec.G, it spec.S) {
 
 			var logs fmt.Stringer
 			image, logs, err = pack.WithNoColor().Build.
-				WithPullPolicy("never").
+				WithExtensions(
+					settings.Extensions.UbiNodejsExtension.Online,
+				).
 				WithBuildpacks(
-					offlineBuildpack,
-					buildPlanBuildpack).
+					settings.Buildpacks.Yarn.Offline,
+					settings.Buildpacks.BuildPlan.Online,
+				).
 				WithNetwork("none").
 				Execute(name, source)
 

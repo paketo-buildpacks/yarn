@@ -21,11 +21,17 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 
 		pack   occam.Pack
 		docker occam.Docker
+
+		pullPolicy = "never"
 	)
 
 	it.Before(func() {
 		pack = occam.NewPack().WithVerbose()
 		docker = occam.NewDocker()
+
+		if settings.Extensions.UbiNodejsExtension.Online != "" {
+			pullPolicy = "always"
+		}
 	})
 
 	context("when the buildpack is run with pack build", func() {
@@ -68,16 +74,21 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 			)
 
 			image, logs, err = pack.WithNoColor().Build.
-				WithPullPolicy("never").
-				WithBuildpacks(buildpack, buildPlanBuildpack).
+				WithExtensions(
+					settings.Extensions.UbiNodejsExtension.Online,
+				).
+				WithBuildpacks(
+					settings.Buildpacks.Yarn.Online,
+					settings.Buildpacks.BuildPlan.Online,
+				).
 				WithSBOMOutputDir(sbomDir).
 				WithEnv(map[string]string{"BP_LOG_LEVEL": "DEBUG"}).
+				WithPullPolicy(pullPolicy).
 				Execute(name, source)
 			Expect(err).ToNot(HaveOccurred(), logs.String)
 
 			// Ensure yarn is installed correctly
-
-			container, err = docker.Container.Run.WithCommand("which yarn").Execute(image.ID)
+			container, err = docker.Container.Run.WithCommand("command -v yarn").Execute(image.ID)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() string {
@@ -87,12 +98,12 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 			}).Should(ContainSubstring("yarn"))
 
 			Expect(logs).To(ContainLines(
-				MatchRegexp(fmt.Sprintf(`%s \d+\.\d+\.\d+`, buildpackInfo.Buildpack.Name)),
+				MatchRegexp(fmt.Sprintf(`%s \d+\.\d+\.\d+`, settings.Buildpack.Name)),
 				"  Executing build process",
 				MatchRegexp(`    Installing Yarn`),
 				MatchRegexp(`      Completed in ([0-9]*(\.[0-9]*)?[a-z]+)+`),
 				"",
-				fmt.Sprintf("  Generating SBOM for /layers/%s/yarn", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_")),
+				fmt.Sprintf("  Generating SBOM for /layers/%s/yarn", strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
 				MatchRegexp(`      Completed in \d+(\.?\d+)*`),
 				"",
 				"  Writing SBOM in the following format(s):",
@@ -103,12 +114,12 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 			))
 
 			// check that all required SBOM files are present
-			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.cdx.json")).To(BeARegularFile())
-			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.spdx.json")).To(BeARegularFile())
-			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.syft.json")).To(BeARegularFile())
+			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(settings.Buildpack.ID, "/", "_"), "yarn", "sbom.cdx.json")).To(BeARegularFile())
+			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(settings.Buildpack.ID, "/", "_"), "yarn", "sbom.spdx.json")).To(BeARegularFile())
+			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(settings.Buildpack.ID, "/", "_"), "yarn", "sbom.syft.json")).To(BeARegularFile())
 
 			// check an SBOM file to make sure it has an entry for yarn
-			contents, err := os.ReadFile(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.cdx.json"))
+			contents, err := os.ReadFile(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(settings.Buildpack.ID, "/", "_"), "yarn", "sbom.cdx.json"))
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(string(contents)).To(ContainSubstring(`"name": "Yarn"`))
@@ -155,8 +166,13 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 			)
 
 			image, logs, err = pack.WithNoColor().Build.
-				WithPullPolicy("never").
-				WithBuildpacks(buildpack, buildPlanBuildpack).
+				WithExtensions(
+					settings.Extensions.UbiNodejsExtension.Online,
+				).
+				WithPullPolicy(pullPolicy).
+				WithBuildpacks(
+					settings.Buildpacks.Yarn.Online,
+					settings.Buildpacks.BuildPlan.Online).
 				WithSBOMOutputDir(sbomDir).
 				WithEnv(map[string]string{
 					"BP_LOG_LEVEL":    "DEBUG",
@@ -166,7 +182,7 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 			Expect(err).ToNot(HaveOccurred(), logs.String)
 
 			// Ensure yarn is installed correctly
-			container, err = docker.Container.Run.WithCommand("which yarn").Execute(image.ID)
+			container, err = docker.Container.Run.WithCommand("command -v yarn").Execute(image.ID)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() string {
@@ -176,7 +192,7 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 			}).Should(ContainSubstring("yarn"))
 
 			Expect(logs).To(ContainLines(
-				MatchRegexp(fmt.Sprintf(`%s \d+\.\d+\.\d+`, buildpackInfo.Buildpack.Name)),
+				MatchRegexp(fmt.Sprintf(`%s \d+\.\d+\.\d+`, settings.Buildpack.Name)),
 				"  Executing build process",
 				MatchRegexp(`    Installing Yarn`),
 				MatchRegexp(`      Completed in ([0-9]*(\.[0-9]*)?[a-z]+)+`),
@@ -185,9 +201,9 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 			))
 
 			// check that SBOM files were not generated
-			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.cdx.json")).ToNot(BeARegularFile())
-			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.spdx.json")).ToNot(BeARegularFile())
-			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(buildpackInfo.Buildpack.ID, "/", "_"), "yarn", "sbom.syft.json")).ToNot(BeARegularFile())
+			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(settings.Buildpack.ID, "/", "_"), "yarn", "sbom.cdx.json")).ToNot(BeARegularFile())
+			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(settings.Buildpack.ID, "/", "_"), "yarn", "sbom.spdx.json")).ToNot(BeARegularFile())
+			Expect(filepath.Join(sbomDir, "sbom", "launch", strings.ReplaceAll(settings.Buildpack.ID, "/", "_"), "yarn", "sbom.syft.json")).ToNot(BeARegularFile())
 		})
 	})
 }

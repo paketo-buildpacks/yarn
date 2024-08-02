@@ -27,7 +27,7 @@ api = "0.7"
     source-checksum = "sha256:732620bac8b1690d507274f025f3c6cfdc3627a84d9642e38a07452cc00e0f2e"
     stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "*"]
     uri = "https://deps.paketo.io/yarn/yarn_1.22.19_linux_noarch_bionic_3235ba55.tgz"
-    version = "1.22.21"
+    version = "1.22.19"
 
   [[metadata.dependencies]]
     checksum = "sha256:88268464199d1611fcf73ce9c0a6c4d44c7d5363682720d8506f6508addf36a0"

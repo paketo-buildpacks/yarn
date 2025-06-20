@@ -2,7 +2,7 @@ api = "0.7"
 
 [buildpack]
   homepage = "https://github.com/paketo-buildpacks/yarn"
-  id = "paketo-buildpacks/yarn"
+  id = "neeto-deploy/yarn"
   name = "Paketo Buildpack for Yarn"
   sbom-formats = ["application/vnd.cyclonedx+json", "application/spdx+json", "application/vnd.syft+json"]
 
@@ -25,8 +25,8 @@ api = "0.7"
     purl = "pkg:generic/yarn@1.22.19?checksum=732620bac8b1690d507274f025f3c6cfdc3627a84d9642e38a07452cc00e0f2e&download_url=https://github.com/yarnpkg/yarn/releases/download/v1.22.19/yarn-v1.22.19.tar.gz"
     source = "https://github.com/yarnpkg/yarn/releases/download/v1.22.19/yarn-v1.22.19.tar.gz"
     source-checksum = "sha256:732620bac8b1690d507274f025f3c6cfdc3627a84d9642e38a07452cc00e0f2e"
-    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "*"]
-    uri = "https://artifacts.paketo.io/yarn/yarn_1.22.19_linux_noarch_bionic_3235ba55.tgz"
+    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "io.buildpacks.stacks.noble" ,"*"]
+    uri = "https://paketo-artifacts.s3.us-east-1.amazonaws.com/yarn/yarn_1.22.19_linux_noarch_bionic_3235ba55.tgz"
     version = "1.22.19"
 
   [[metadata.dependencies]]
@@ -38,9 +38,9 @@ api = "0.7"
     purl = "pkg:generic/yarn@1.22.22?checksum=88268464199d1611fcf73ce9c0a6c4d44c7d5363682720d8506f6508addf36a0&download_url=https://github.com/yarnpkg/yarn/releases/download/v1.22.22/yarn-v1.22.22.tar.gz"
     source = "https://github.com/yarnpkg/yarn/releases/download/v1.22.22/yarn-v1.22.22.tar.gz"
     source-checksum = "sha256:88268464199d1611fcf73ce9c0a6c4d44c7d5363682720d8506f6508addf36a0"
-    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy"]
+    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "io.buildpacks.stacks.noble"]
     strip-components = 1
-    uri = "https://github.com/yarnpkg/yarn/releases/download/v1.22.22/yarn-v1.22.22.tar.gz"
+    uri = "https://paketo-artifacts.s3.us-east-1.amazonaws.com/yarn/yarn-v1.22.22.tar.gz"
     version = "1.22.22"
 
   [[metadata.dependency-constraints]]
@@ -53,6 +53,9 @@ api = "0.7"
 
 [[stacks]]
   id = "io.buildpacks.stacks.jammy"
+
+[[stacks]]
+  id = "io.buildpacks.stacks.noble"
 
 [[stacks]]
   id = "*"

@@ -30,6 +30,20 @@ api = "0.7"
     version = "1.22.19"
 
   [[metadata.dependencies]]
+    checksum = "sha256:c8d3eae160a892e32837db3dcae515e843e5383fef52b8141940c8bcf8b6d59f"
+    cpe = "cpe:2.3:a:yarnpkg:yarn:4.9.2:*:*:*:*:*:*:*"
+    id = "yarn"
+    licenses = ["BSD-2-Clause"]
+    name = "Yarn"
+    purl = "pkg:generic/yarn@4.9.2"
+    source = "https://registry.npmjs.org/yarn/-/yarn-4.9.2.tgz"
+    source-checksum = "sha256:c8d3eae160a892e32837db3dcae515e843e5383fef52b8141940c8bcf8b6d59f"
+    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "io.buildpacks.stacks.noble", "*"]
+    strip-components = 1
+    uri = "https://registry.npmjs.org/yarn/-/yarn-4.9.2.tgz"
+    version = "4.9.2"
+    
+  [[metadata.dependencies]]
     checksum = "sha256:88268464199d1611fcf73ce9c0a6c4d44c7d5363682720d8506f6508addf36a0"
     cpe = "cpe:2.3:a:yarnpkg:yarn:1.22.22:*:*:*:*:*:*:*"
     id = "yarn"

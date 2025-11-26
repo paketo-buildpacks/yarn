@@ -47,15 +47,15 @@ func TestIntegration(t *testing.T) {
 
 	file, err := os.Open("../integration.json")
 	Expect(err).NotTo(HaveOccurred())
-	defer file.Close()
 
 	Expect(json.NewDecoder(file).Decode(&settings.Config)).To(Succeed())
+	Expect(file.Close()).To(Succeed())
 
 	file, err = os.Open("../buildpack.toml")
 	Expect(err).NotTo(HaveOccurred())
-
 	_, err = toml.NewDecoder(file).Decode(&settings)
 	Expect(err).NotTo(HaveOccurred())
+	Expect(file.Close()).To(Succeed())
 
 	root, err := filepath.Abs("./..")
 	Expect(err).ToNot(HaveOccurred())

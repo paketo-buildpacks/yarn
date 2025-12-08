@@ -47,15 +47,15 @@ func TestIntegration(t *testing.T) {
 
 	file, err := os.Open("../integration.json")
 	Expect(err).NotTo(HaveOccurred())
-	defer file.Close()
 
 	Expect(json.NewDecoder(file).Decode(&settings.Config)).To(Succeed())
+	Expect(file.Close()).To(Succeed())
 
 	file, err = os.Open("../buildpack.toml")
 	Expect(err).NotTo(HaveOccurred())
-
 	_, err = toml.NewDecoder(file).Decode(&settings)
 	Expect(err).NotTo(HaveOccurred())
+	Expect(file.Close()).To(Succeed())
 
 	root, err := filepath.Abs("./..")
 	Expect(err).ToNot(HaveOccurred())
@@ -67,7 +67,7 @@ func TestIntegration(t *testing.T) {
 	builder, err := pack.Builder.Inspect.Execute()
 	Expect(err).NotTo(HaveOccurred())
 
-	if builder.BuilderName == "index.docker.io/paketobuildpacks/builder-ubi8-buildpackless-base:latest" {
+	if builder.BuilderName == "paketobuildpacks/builder-ubi8-buildpackless-base" || builder.BuilderName == "paketobuildpacks/ubi-9-builder-buildpackless" {
 		settings.Extensions.UbiNodejsExtension.Online, err = buildpackStore.Get.
 			Execute(settings.Config.UbiNodejsExtension)
 		Expect(err).ToNot(HaveOccurred())

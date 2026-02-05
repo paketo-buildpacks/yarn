@@ -133,7 +133,8 @@ func (g GithubClient) GetReleaseTags(org, repo string) ([]GithubRelease, error) 
 		page++
 
 		for _, release := range releases {
-			if release.Draft || release.Prerelease {
+			// release 1.22.21 and 1.22.20 do not have binaries on their platforms, so we skip them.
+			if release.Draft || release.Prerelease || release.TagName == "v1.22.21" || release.TagName == "v1.22.20" {
 				continue
 			}
 

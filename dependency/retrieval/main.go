@@ -12,11 +12,11 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/joshuatcasey/libdependency/retrieve"
-	"github.com/joshuatcasey/libdependency/upstream"
-	"github.com/joshuatcasey/libdependency/versionology"
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/paketo-buildpacks/libdependency/retrieve"
+	"github.com/paketo-buildpacks/libdependency/upstream"
+	"github.com/paketo-buildpacks/libdependency/versionology"
 	"github.com/paketo-buildpacks/packit/v2/cargo"
-	"golang.org/x/crypto/openpgp"
 )
 
 type Asset struct {
@@ -32,11 +32,12 @@ func (yarnMetadata YarnMetadata) Version() *semver.Version {
 }
 
 func main() {
-	retrieve.NewMetadata("yarn", getAllVersions, generateMetadata)
+	retrieve.NewMetadataWithPlatforms("yarn", getAllVersions, generateMetadataWithPlatform)
 }
 
-func generateMetadata(versionFetcher versionology.VersionFetcher) ([]versionology.Dependency, error) {
+func generateMetadataWithPlatform(versionFetcher versionology.VersionFetcher, platform retrieve.Platform) ([]versionology.Dependency, error) {
 	version := versionFetcher.Version().String()
+
 	releases, err := NewGithubClient(NewWebClient()).GetReleaseTags("yarnpkg", "yarn")
 	if err != nil {
 		return nil, fmt.Errorf("could not get releases: %w", err)
@@ -45,7 +46,7 @@ func generateMetadata(versionFetcher versionology.VersionFetcher) ([]versionolog
 	for _, release := range releases {
 		tagName := "v" + version
 		if release.TagName == tagName {
-			dependency, err := createDependencyVersion(version, tagName, release)
+			dependency, err := createDependencyVersion(version, tagName, platform)
 			if err != nil {
 				return nil, fmt.Errorf("could not create yarn version: %w", err)
 			}
@@ -89,7 +90,7 @@ func getAllVersions() (versionology.VersionFetcherArray, error) {
 
 }
 
-func createDependencyVersion(version, tagName string, release GithubRelease) (cargo.ConfigMetadataDependency, error) {
+func createDependencyVersion(version, tagName string, platform retrieve.Platform) (cargo.ConfigMetadataDependency, error) {
 	webClient := NewWebClient()
 	githubClient := NewGithubClient(webClient)
 	yarnGPGKey, err := webClient.Get("https://dl.yarnpkg.com/debian/pubkey.gpg")
@@ -141,19 +142,21 @@ func createDependencyVersion(version, tagName string, release GithubRelease) (ca
 	}
 
 	return cargo.ConfigMetadataDependency{
+		Arch:            platform.Arch,
 		CPE:             fmt.Sprintf("cpe:2.3:a:yarnpkg:yarn:%s:*:*:*:*:*:*:*", version),
 		Checksum:        fmt.Sprintf("sha256:%s", dependencySHA),
+		DeprecationDate: nil,
 		ID:              "yarn",
 		Licenses:        retrieve.LookupLicenses(asset.BrowserDownloadUrl, upstream.DefaultDecompress),
 		Name:            "Yarn",
+		OS:              platform.OS,
 		PURL:            retrieve.GeneratePURL("yarn", version, dependencySHA, asset.BrowserDownloadUrl),
 		Source:          asset.BrowserDownloadUrl,
 		SourceChecksum:  fmt.Sprintf("sha256:%s", dependencySHA),
-		Stacks:          []string{"io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy"},
+		StripComponents: 1,
+		Stacks:          []string{"io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "*"},
 		URI:             asset.BrowserDownloadUrl,
 		Version:         version,
-		DeprecationDate: nil,
-		StripComponents: 1,
 	}, nil
 }
 
@@ -175,7 +178,7 @@ func verifyASC(asc, path string, pgpKeys ...string) error {
 			continue
 		}
 
-		_, err = openpgp.CheckArmoredDetachedSignature(keyring, file, strings.NewReader(asc))
+		_, err = openpgp.CheckArmoredDetachedSignature(keyring, file, strings.NewReader(asc), nil)
 		if err != nil {
 			log.Printf("failed to check signature: %s", err.Error())
 			continue

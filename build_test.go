@@ -122,6 +122,7 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		Expect(layer.Path).To(Equal(filepath.Join(layersDir, "yarn")))
 		Expect(layer.Metadata).To(Equal(map[string]interface{}{
 			yarn.DependencyCacheKey: "sha256:yarn-dependency-sha",
+			"dependency-id":         "yarn",
 		}))
 
 		Expect(layer.SBOM.Formats()).To(HaveLen(2))
@@ -258,7 +259,100 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			Expect(layer.Cache).To(BeTrue())
 			Expect(layer.Metadata).To(Equal(map[string]interface{}{
 				yarn.DependencyCacheKey: "sha256:yarn-dependency-sha",
+				"dependency-id":         "yarn",
 			}))
+		})
+	})
+
+	context("when the app uses Yarn Berry via packageManager in package.json", func() {
+		it.Before(func() {
+			err := os.WriteFile(filepath.Join(workingDir, "package.json"),
+				[]byte(`{"packageManager":"yarn@4.14.1"}`), os.ModePerm)
+			Expect(err).NotTo(HaveOccurred())
+
+			dependencyManager.ResolveCall.Returns.Dependency = postal.Dependency{
+				ID:       "berry",
+				Name:     "berry-dependency-name",
+				Checksum: "sha256:berry-dependency-sha",
+				Stacks:   []string{"some-stack"},
+				URI:      "berry-dependency-uri",
+				Version:  "4.14.1",
+			}
+
+			// Simulate the @yarnpkg/cli-dist tgz delivery: bin/yarn is extracted
+			// with 0644 and must be chmod'd to 0755 by the buildpack.
+			dependencyManager.DeliverCall.Stub = func(dep postal.Dependency, cnbPath, layerPath, platformPath string) error {
+				Expect(os.MkdirAll(filepath.Join(layerPath, "bin"), os.ModePerm)).To(Succeed())
+				return os.WriteFile(filepath.Join(layerPath, "bin", "yarn"), []byte("#!/bin/sh\n"), 0644)
+			}
+		})
+
+		it("resolves the berry dependency and makes bin/yarn executable", func() {
+			result, err := build(buildContext)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(dependencyManager.ResolveCall.Receives.Id).To(Equal("berry"))
+
+			layer := result.Layers[0]
+			Expect(layer.Metadata).To(Equal(map[string]interface{}{
+				yarn.DependencyCacheKey: "sha256:berry-dependency-sha",
+				"dependency-id":         "berry",
+			}))
+
+			// bin/yarn must be executable after the buildpack runs.
+			info, err := os.Stat(filepath.Join(layer.Path, "bin", "yarn"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.Mode()&0111).NotTo(BeZero(), "bin/yarn should be executable")
+		})
+	})
+
+	context("when the app uses packageManager yarn@2.x (classic threshold)", func() {
+		it.Before(func() {
+			err := os.WriteFile(filepath.Join(workingDir, "package.json"),
+				[]byte(`{"packageManager":"yarn@2.4.3"}`), os.ModePerm)
+			Expect(err).NotTo(HaveOccurred())
+
+			dependencyManager.ResolveCall.Returns.Dependency = postal.Dependency{
+				ID:       "berry",
+				Version:  "2.4.3",
+				Checksum: "sha256:berry-2-sha",
+			}
+		})
+
+		it("resolves berry for major version 2", func() {
+			_, err := build(buildContext)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(dependencyManager.ResolveCall.Receives.Id).To(Equal("berry"))
+		})
+	})
+
+	context("when the app declares packageManager yarn@1.22.22 (classic)", func() {
+		it.Before(func() {
+			err := os.WriteFile(filepath.Join(workingDir, "package.json"),
+				[]byte(`{"packageManager":"yarn@1.22.22"}`), os.ModePerm)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		it("still resolves the classic yarn dependency", func() {
+			_, err := build(buildContext)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(dependencyManager.ResolveCall.Receives.Id).To(Equal("yarn"))
+		})
+	})
+
+	context("when package.json has no packageManager field", func() {
+		it("defaults to classic yarn", func() {
+			_, err := build(buildContext)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(dependencyManager.ResolveCall.Receives.Id).To(Equal("yarn"))
+		})
+	})
+
+	context("when there is no package.json in the working directory", func() {
+		it("defaults to classic yarn", func() {
+			_, err := build(buildContext)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(dependencyManager.ResolveCall.Receives.Id).To(Equal("yarn"))
 		})
 	})
 

@@ -1,10 +1,12 @@
 package yarn
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/paketo-buildpacks/packit/v2"
@@ -48,9 +50,18 @@ func Build(
 			version = "default"
 		}
 
+		// Determine whether the app uses Yarn Berry via the packageManager field
+		// in package.json (e.g. "yarn@4.x.x") or via BP_YARN_VERSION env var.
+		dependencyID := YarnDependency
+		if isBerry(context.WorkingDir, version) {
+			dependencyID = BerryDependency
+			// Reset version so the dependency constraint in buildpack.toml drives selection.
+			version = "default"
+		}
+
 		dependency, err := dependencyManager.Resolve(
 			filepath.Join(context.CNBPath, "buildpack.toml"),
-			entry.Name,
+			dependencyID,
 			version,
 			context.Stack)
 		if err != nil {
@@ -102,6 +113,18 @@ func Build(
 		if err != nil {
 			return packit.BuildResult{}, err
 		}
+
+		// The @yarnpkg/cli-dist tarball ships bin/yarn as 0644; chmod it so it
+		// is executable on PATH. bin/yarn.js already has the correct 0755 mode.
+		if dependencyID == BerryDependency {
+			yarnShim := filepath.Join(yarnLayer.Path, "bin", "yarn")
+			if _, statErr := os.Stat(yarnShim); statErr == nil {
+				if err := os.Chmod(yarnShim, 0755); err != nil {
+					return packit.BuildResult{}, fmt.Errorf("failed to make berry yarn shim executable: %w", err)
+				}
+			}
+		}
+
 		logger.Action("Completed in %s", duration.Round(time.Millisecond))
 		logger.Break()
 
@@ -136,6 +159,7 @@ func Build(
 
 		yarnLayer.Metadata = map[string]interface{}{
 			DependencyCacheKey: dependency.Checksum,
+			"dependency-id":    dependencyID,
 		}
 
 		return packit.BuildResult{
@@ -155,4 +179,46 @@ func checkSbomDisabled() (bool, error) {
 		return disable, nil
 	}
 	return false, nil
+}
+
+// isBerry returns true when the app declares a packageManager field in
+// package.json that starts with "yarn@" and the major version is >= 2 (i.e.
+// Yarn Berry), or when the resolved build-plan version string is >= "2".
+func isBerry(workingDir, version string) bool {
+	// Explicit version constraint wins first.
+	if version != "" && version != "default" {
+		major := strings.SplitN(version, ".", 2)[0]
+		if major >= "2" {
+			return true
+		}
+	}
+
+	pm := readPackageManager(workingDir)
+	if strings.HasPrefix(pm, "yarn@") {
+		ver := strings.TrimPrefix(pm, "yarn@")
+		major := strings.SplitN(ver, ".", 2)[0]
+		if major >= "2" {
+			return true
+		}
+	}
+	return false
+}
+
+// readPackageManager reads the "packageManager" field from package.json in the
+// given directory. Returns an empty string if the file cannot be read or the
+// field is absent.
+func readPackageManager(workingDir string) string {
+	f, err := os.Open(filepath.Join(workingDir, "package.json"))
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+
+	var pkg struct {
+		PackageManager string `json:"packageManager"`
+	}
+	if err := json.NewDecoder(f).Decode(&pkg); err != nil {
+		return ""
+	}
+	return pkg.PackageManager
 }

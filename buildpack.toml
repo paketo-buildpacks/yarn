@@ -80,9 +80,74 @@ api = "0.7"
     uri = "https://github.com/yarnpkg/yarn/releases/download/v1.22.22/yarn-v1.22.22.tar.gz"
     version = "1.22.22"
 
+  [[metadata.dependencies]]
+    arch = "amd64"
+    checksum = "sha256:9ade5d934d11e391a9b086bf620f18b65cf115e3d672798dfa326b830bc15bd0"
+    cpe = "cpe:2.3:a:yarnpkg:yarn:4.14.0:*:*:*:*:*:*:*"
+    id = "berry"
+    name = "Yarn Berry"
+    os = "linux"
+    purl = "pkg:generic/berry@4.14.0?checksum=9ade5d934d11e391a9b086bf620f18b65cf115e3d672798dfa326b830bc15bd0&download_url=https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-4.14.0.tgz"
+    source = "https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-4.14.0.tgz"
+    source-checksum = "sha256:9ade5d934d11e391a9b086bf620f18b65cf115e3d672798dfa326b830bc15bd0"
+    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "*"]
+    strip-components = 1
+    uri = "https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-4.14.0.tgz"
+    version = "4.14.0"
+
+  [[metadata.dependencies]]
+    arch = "arm64"
+    checksum = "sha256:9ade5d934d11e391a9b086bf620f18b65cf115e3d672798dfa326b830bc15bd0"
+    cpe = "cpe:2.3:a:yarnpkg:yarn:4.14.0:*:*:*:*:*:*:*"
+    id = "berry"
+    name = "Yarn Berry"
+    os = "linux"
+    purl = "pkg:generic/berry@4.14.0?checksum=9ade5d934d11e391a9b086bf620f18b65cf115e3d672798dfa326b830bc15bd0&download_url=https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-4.14.0.tgz"
+    source = "https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-4.14.0.tgz"
+    source-checksum = "sha256:9ade5d934d11e391a9b086bf620f18b65cf115e3d672798dfa326b830bc15bd0"
+    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "*"]
+    strip-components = 1
+    uri = "https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-4.14.0.tgz"
+    version = "4.14.0"
+
+  [[metadata.dependencies]]
+    arch = "amd64"
+    checksum = "sha256:050441cd452e222ec1b8409415174e81a15a1e8ca5d76236c89f1a4cc9984bcb"
+    cpe = "cpe:2.3:a:yarnpkg:yarn:4.14.1:*:*:*:*:*:*:*"
+    id = "berry"
+    name = "Yarn Berry"
+    os = "linux"
+    purl = "pkg:generic/berry@4.14.1?checksum=050441cd452e222ec1b8409415174e81a15a1e8ca5d76236c89f1a4cc9984bcb&download_url=https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-4.14.1.tgz"
+    source = "https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-4.14.1.tgz"
+    source-checksum = "sha256:050441cd452e222ec1b8409415174e81a15a1e8ca5d76236c89f1a4cc9984bcb"
+    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "*"]
+    strip-components = 1
+    uri = "https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-4.14.1.tgz"
+    version = "4.14.1"
+
+  [[metadata.dependencies]]
+    arch = "arm64"
+    checksum = "sha256:050441cd452e222ec1b8409415174e81a15a1e8ca5d76236c89f1a4cc9984bcb"
+    cpe = "cpe:2.3:a:yarnpkg:yarn:4.14.1:*:*:*:*:*:*:*"
+    id = "berry"
+    name = "Yarn Berry"
+    os = "linux"
+    purl = "pkg:generic/berry@4.14.1?checksum=050441cd452e222ec1b8409415174e81a15a1e8ca5d76236c89f1a4cc9984bcb&download_url=https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-4.14.1.tgz"
+    source = "https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-4.14.1.tgz"
+    source-checksum = "sha256:050441cd452e222ec1b8409415174e81a15a1e8ca5d76236c89f1a4cc9984bcb"
+    stacks = ["io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "*"]
+    strip-components = 1
+    uri = "https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-4.14.1.tgz"
+    version = "4.14.1"
+
   [[metadata.dependency-constraints]]
     constraint = "1.*"
     id = "yarn"
+    patches = 2
+
+  [[metadata.dependency-constraints]]
+    constraint = "*"
+    id = "berry"
     patches = 2
 
 [[stacks]]

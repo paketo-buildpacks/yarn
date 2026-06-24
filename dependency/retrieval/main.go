@@ -1,11 +1,9 @@
 package main
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -13,10 +11,20 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ProtonMail/go-crypto/openpgp"
+	buildpackConfig "github.com/paketo-buildpacks/libdependency/buildpack_config"
 	"github.com/paketo-buildpacks/libdependency/retrieve"
 	"github.com/paketo-buildpacks/libdependency/upstream"
 	"github.com/paketo-buildpacks/libdependency/versionology"
 	"github.com/paketo-buildpacks/packit/v2/cargo"
+
+	"crypto/sha256"
+	"io"
+)
+
+const (
+	// berryDependencyID distinguishes Berry entries from Classic in buildpack.toml.
+	berryDependencyID = "berry"
+	berryTagPrefix    = "@yarnpkg/cli/"
 )
 
 type Asset struct {
@@ -32,7 +40,56 @@ func (yarnMetadata YarnMetadata) Version() *semver.Version {
 }
 
 func main() {
-	retrieve.NewMetadataWithPlatforms("yarn", getAllVersions, generateMetadataWithPlatform)
+	buildpackTomlPath, output := retrieve.FetchArgs()
+
+	config, err := buildpackConfig.ParseBuildpackToml(buildpackTomlPath)
+	if err != nil {
+		panic(err)
+	}
+
+	// Default to linux/amd64 if no targets are specified (mirrors NewMetadataWithPlatforms).
+	if len(config.Targets) == 0 {
+		config.Targets = []cargo.ConfigTarget{{OS: "linux", Arch: "amd64"}}
+	}
+
+	var allDependencies []versionology.Dependency
+
+	// --- Classic Yarn (id: "yarn") ---
+	classicVersions, err := retrieve.GetNewVersionsForId("yarn", config, getAllVersions)
+	if err != nil {
+		panic(fmt.Errorf("could not get new Classic Yarn versions: %w", err))
+	}
+	for _, target := range config.Targets {
+		platform := retrieve.Platform{OS: target.OS, Arch: target.Arch}
+		allDependencies = append(allDependencies, retrieve.GenerateAllMetadataWithPlatform(classicVersions, generateMetadataWithPlatform, platform)...)
+	}
+
+	// --- Yarn Berry (id: "berry") ---
+	berryVersions, err := retrieve.GetNewVersionsForId("berry", config, getAllBerryVersions)
+	if err != nil {
+		panic(fmt.Errorf("could not get new Berry versions: %w", err))
+	}
+	// Pre-fetch Berry releases once to avoid one API call per version.
+	berryReleases, err := NewGithubClient(NewWebClient()).GetReleaseTags("yarnpkg", "berry")
+	if err != nil {
+		panic(fmt.Errorf("could not get Berry releases: %w", err))
+	}
+	for _, target := range config.Targets {
+		platform := retrieve.Platform{OS: target.OS, Arch: target.Arch}
+		allDependencies = append(allDependencies, retrieve.GenerateAllMetadataWithPlatform(berryVersions, func(vf versionology.VersionFetcher, p retrieve.Platform) ([]versionology.Dependency, error) {
+			return generateBerryMetadataWithReleases(vf, berryReleases, p)
+		}, platform)...)
+	}
+
+	// Write combined output.
+	metadataJSON, err := json.Marshal(allDependencies)
+	if err != nil {
+		panic(fmt.Errorf("unable to marshal metadata JSON: %w", err))
+	}
+	if err = os.WriteFile(output, metadataJSON, os.ModePerm); err != nil {
+		panic(fmt.Errorf("cannot write to %s: %w", output, err))
+	}
+	fmt.Printf("Wrote metadata to %s\n", output)
 }
 
 func generateMetadataWithPlatform(versionFetcher versionology.VersionFetcher, platform retrieve.Platform) ([]versionology.Dependency, error) {
@@ -87,12 +144,12 @@ func getAllVersions() (versionology.VersionFetcherArray, error) {
 	}
 
 	return versions, nil
-
 }
 
 func createDependencyVersion(version, tagName string, platform retrieve.Platform) (cargo.ConfigMetadataDependency, error) {
 	webClient := NewWebClient()
 	githubClient := NewGithubClient(webClient)
+
 	yarnGPGKey, err := webClient.Get("https://dl.yarnpkg.com/debian/pubkey.gpg")
 	if err != nil {
 		return cargo.ConfigMetadataDependency{}, fmt.Errorf("could not get yarn GPG key: %w", err)
@@ -156,6 +213,98 @@ func createDependencyVersion(version, tagName string, platform retrieve.Platform
 		StripComponents: 1,
 		Stacks:          []string{"io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "*"},
 		URI:             asset.BrowserDownloadUrl,
+		Version:         version,
+	}, nil
+}
+
+// getAllBerryVersions fetches all stable Yarn Berry versions from GitHub releases.
+func getAllBerryVersions() (versionology.VersionFetcherArray, error) {
+	githubClient := NewGithubClient(NewWebClient())
+	releases, err := githubClient.GetReleaseTags("yarnpkg", "berry")
+	if err != nil {
+		return nil, fmt.Errorf("could not get Berry versions: %w", err)
+	}
+
+	var versions []versionology.VersionFetcher
+	for _, release := range releases {
+		versionStr := strings.TrimPrefix(release.TagName, berryTagPrefix)
+		version, err := semver.NewVersion(versionStr)
+		if err != nil {
+			continue
+		}
+		if version.Prerelease() != "" {
+			continue
+		}
+		versions = append(versions, YarnMetadata{version})
+	}
+
+	return versions, nil
+}
+
+// generateBerryMetadataWithReleases creates dependency metadata for a specific Berry version using pre-fetched releases.
+func generateBerryMetadataWithReleases(versionFetcher versionology.VersionFetcher, releases []GithubRelease, platform retrieve.Platform) ([]versionology.Dependency, error) {
+	version := versionFetcher.Version().String()
+
+	for _, release := range releases {
+		tagName := berryTagPrefix + version
+		if release.TagName == tagName {
+			dependency, err := createBerryDependencyVersion(version, tagName, platform)
+			if err != nil {
+				return nil, fmt.Errorf("could not create berry version: %w", err)
+			}
+
+			return []versionology.Dependency{{
+				ConfigMetadataDependency: dependency,
+				SemverVersion:            versionFetcher.Version(),
+			}}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find berry version %s", version)
+}
+
+// createBerryDependencyVersion builds a ConfigMetadataDependency for a Berry version.
+// Downloads the @yarnpkg/cli-dist npm tarball which contains the ready-to-run
+// bin/yarn.js bundle (strip-components=1 places bin/ into the layer).
+func createBerryDependencyVersion(version, tagName string, platform retrieve.Platform) (cargo.ConfigMetadataDependency, error) {
+	webClient := NewWebClient()
+
+	downloadURL := fmt.Sprintf(
+		"https://registry.npmjs.org/@yarnpkg/cli-dist/-/cli-dist-%s.tgz",
+		version,
+	)
+
+	tempDir, err := os.MkdirTemp("", "berry")
+	if err != nil {
+		return cargo.ConfigMetadataDependency{}, fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	tgzPath := filepath.Join(tempDir, fmt.Sprintf("cli-dist-%s.tgz", version))
+	if err = webClient.Download(downloadURL, tgzPath); err != nil {
+		return cargo.ConfigMetadataDependency{}, fmt.Errorf("could not download Berry cli-dist: %w", err)
+	}
+
+	dependencySHA, err := getSHA256(tgzPath)
+	if err != nil {
+		return cargo.ConfigMetadataDependency{}, fmt.Errorf("could not compute SHA256: %w", err)
+	}
+
+	return cargo.ConfigMetadataDependency{
+		Arch:            platform.Arch,
+		CPE:             fmt.Sprintf("cpe:2.3:a:yarnpkg:yarn:%s:*:*:*:*:*:*:*", version),
+		Checksum:        fmt.Sprintf("sha256:%s", dependencySHA),
+		DeprecationDate: nil,
+		ID:              berryDependencyID,
+		Licenses:        retrieve.LookupLicenses(downloadURL, upstream.DefaultDecompress),
+		Name:            "Yarn Berry",
+		OS:              platform.OS,
+		PURL:            retrieve.GeneratePURL("berry", version, dependencySHA, downloadURL),
+		Source:          downloadURL,
+		SourceChecksum:  fmt.Sprintf("sha256:%s", dependencySHA),
+		StripComponents: 1,
+		Stacks:          []string{"io.buildpacks.stacks.bionic", "io.buildpacks.stacks.jammy", "*"},
+		URI:             downloadURL,
 		Version:         version,
 	}, nil
 }

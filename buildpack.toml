@@ -146,7 +146,7 @@ api = "0.7"
     patches = 2
 
   [[metadata.dependency-constraints]]
-    constraint = "*"
+    constraint = ">=2"
     id = "berry"
     patches = 2
 

@@ -212,7 +212,7 @@ func readPackageManager(workingDir string) string {
 	if err != nil {
 		return ""
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var pkg struct {
 		PackageManager string `json:"packageManager"`

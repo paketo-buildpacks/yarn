@@ -42,6 +42,7 @@ func (yarnMetadata YarnMetadata) Version() *semver.Version {
 
 func main() {
 	buildpackTomlPath, output := retrieve.FetchArgs()
+	validate(buildpackTomlPath, output)
 
 	config, err := buildpackConfig.ParseBuildpackToml(buildpackTomlPath)
 	if err != nil {
@@ -78,6 +79,13 @@ func main() {
 
 func generateMetadataWithPlatform(versionFetcher versionology.VersionFetcher, platform retrieve.Platform) ([]versionology.Dependency, error) {
 	version := versionFetcher.Version().String()
+// validate function, is an exact copy of livedependency/retrieve/validate function
+func validate(buildpackTomlPath, metadataFile string) {
+	if exists, err := fs.Exists(buildpackTomlPath); err != nil {
+		panic(err)
+	} else if !exists {
+		panic(fmt.Errorf("could not locate buildpack.toml at '%s'", buildpackTomlPath))
+	}
 
 	// Berry versions have major >= 2; Classic is always 1.x.
 	if versionFetcher.Version().Major() >= 2 {

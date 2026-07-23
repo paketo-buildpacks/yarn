@@ -2,6 +2,6 @@
 
 retrieve:
 	@cd retrieval; \
-	go run main.go \
+	go run . \
 		--buildpack-toml-path "${buildpackTomlPath}" \
 		--output "${output}"

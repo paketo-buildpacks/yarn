@@ -282,17 +282,16 @@ func createBerryDependencyVersion(version string, platform retrieve.Platform) (c
 		return cargo.ConfigMetadataDependency{}, fmt.Errorf("could not download Berry cli-dist: %w", err)
 	}
 
-	// Validate the downloaded tarball against the SHA1 from the npm registry.
-	expectedSHA1, err := getNpmSHA1(webClient, version)
+	npmMeta, err := getNpmMetadata(webClient, version)
 	if err != nil {
-		return cargo.ConfigMetadataDependency{}, fmt.Errorf("could not get expected SHA1 from npm registry: %w", err)
+		return cargo.ConfigMetadataDependency{}, fmt.Errorf("could not get npm registry metadata: %w", err)
 	}
 	actualSHA1, err := getSHA1(tgzPath)
 	if err != nil {
 		return cargo.ConfigMetadataDependency{}, fmt.Errorf("could not compute SHA1: %w", err)
 	}
-	if actualSHA1 != expectedSHA1 {
-		return cargo.ConfigMetadataDependency{}, fmt.Errorf("SHA1 mismatch for cli-dist-%s.tgz: expected %s, got %s", version, expectedSHA1, actualSHA1)
+	if actualSHA1 != npmMeta.Shasum {
+		return cargo.ConfigMetadataDependency{}, fmt.Errorf("SHA1 mismatch for cli-dist-%s.tgz: expected %s, got %s", version, npmMeta.Shasum, actualSHA1)
 	}
 
 	dependencySHA, err := getSHA256(tgzPath)
@@ -306,10 +305,10 @@ func createBerryDependencyVersion(version string, platform retrieve.Platform) (c
 		Checksum:        fmt.Sprintf("sha256:%s", dependencySHA),
 		DeprecationDate: nil,
 		ID:              berryDependencyID,
-		Licenses:        retrieve.LookupLicenses(downloadURL, upstream.DefaultDecompress),
+		Licenses:        []interface{}{npmMeta.License},
 		Name:            "Yarn Berry",
 		OS:              platform.OS,
-		PURL:            retrieve.GeneratePURL("berry", version, dependencySHA, downloadURL),
+		PURL:            retrieve.GeneratePURL(berryDependencyID, version, dependencySHA, downloadURL),
 		Source:          downloadURL,
 		SourceChecksum:  fmt.Sprintf("sha256:%s", dependencySHA),
 		StripComponents: 1,
@@ -381,25 +380,38 @@ func getSHA1(path string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
-// getNpmSHA1 fetches the expected SHA1 checksum for a Berry version from the npm registry.
-func getNpmSHA1(webClient WebClient, version string) (string, error) {
+type npmMetadata struct {
+	Shasum  string
+	License string
+}
+
+// getNpmMetadata fetches shasum and license for a Berry version from the npm registry.
+// The cli-dist tarball has no LICENSE file, so license comes from package metadata.
+func getNpmMetadata(webClient WebClient, version string) (npmMetadata, error) {
 	registryURL := fmt.Sprintf("https://registry.npmjs.org/@yarnpkg/cli-dist/%s", version)
 	body, err := webClient.Get(registryURL)
 	if err != nil {
-		return "", fmt.Errorf("could not fetch npm registry metadata: %w", err)
+		return npmMetadata{}, fmt.Errorf("could not fetch npm registry metadata: %w", err)
 	}
 
 	var metadata struct {
-		Dist struct {
+		License string `json:"license"`
+		Dist    struct {
 			Shasum string `json:"shasum"`
 		} `json:"dist"`
 	}
 	if err := json.Unmarshal(body, &metadata); err != nil {
-		return "", fmt.Errorf("could not parse npm registry metadata: %w", err)
+		return npmMetadata{}, fmt.Errorf("could not parse npm registry metadata: %w", err)
 	}
 	if metadata.Dist.Shasum == "" {
-		return "", fmt.Errorf("npm registry did not return a shasum for version %s", version)
+		return npmMetadata{}, fmt.Errorf("npm registry did not return a shasum for version %s", version)
+	}
+	if metadata.License == "" {
+		return npmMetadata{}, fmt.Errorf("npm registry did not return a license for version %s", version)
 	}
 
-	return metadata.Dist.Shasum, nil
+	return npmMetadata{
+		Shasum:  metadata.Dist.Shasum,
+		License: metadata.License,
+	}, nil
 }

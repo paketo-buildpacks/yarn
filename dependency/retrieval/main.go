@@ -20,6 +20,7 @@ import (
 	"github.com/paketo-buildpacks/libdependency/upstream"
 	"github.com/paketo-buildpacks/libdependency/versionology"
 	"github.com/paketo-buildpacks/packit/v2/cargo"
+	"github.com/paketo-buildpacks/packit/v2/fs"
 )
 
 const (
@@ -56,14 +57,21 @@ func main() {
 
 	var allDependencies []versionology.Dependency
 
-	for _, id := range []string{"yarn", berryDependencyID} {
-		newVersions, err := retrieve.GetNewVersionsForId(id, config, getAllVersions)
+	for _, job := range []struct {
+		id       string
+		versions retrieve.GetAllVersionsFunc
+		meta     retrieve.GenerateMetadataWithPlatformFunc
+	}{
+		{yarnDependencyID, getClassicVersions, generateClassicMetadata},
+		{berryDependencyID, getBerryVersions, generateBerryMetadata},
+	} {
+		newVersions, err := retrieve.GetNewVersionsForId(job.id, config, job.versions)
 		if err != nil {
-			panic(fmt.Errorf("could not get new versions for %s: %w", id, err))
+			panic(fmt.Errorf("could not get new versions for %s: %w", job.id, err))
 		}
 		for _, target := range config.Targets {
 			platform := retrieve.Platform{OS: target.OS, Arch: target.Arch}
-			allDependencies = append(allDependencies, retrieve.GenerateAllMetadataWithPlatform(newVersions, generateMetadataWithPlatform, platform)...)
+			allDependencies = append(allDependencies, retrieve.GenerateAllMetadataWithPlatform(newVersions, job.meta, platform)...)
 		}
 	}
 
@@ -77,8 +85,6 @@ func main() {
 	fmt.Printf("Wrote metadata to %s\n", output)
 }
 
-func generateMetadataWithPlatform(versionFetcher versionology.VersionFetcher, platform retrieve.Platform) ([]versionology.Dependency, error) {
-	version := versionFetcher.Version().String()
 // validate function, is an exact copy of livedependency/retrieve/validate function
 func validate(buildpackTomlPath, metadataFile string) {
 	if exists, err := fs.Exists(buildpackTomlPath); err != nil {
@@ -87,17 +93,14 @@ func validate(buildpackTomlPath, metadataFile string) {
 		panic(fmt.Errorf("could not locate buildpack.toml at '%s'", buildpackTomlPath))
 	}
 
-	// Berry versions have major >= 2; Classic is always 1.x.
-	if versionFetcher.Version().Major() >= 2 {
-		dependency, err := createBerryDependencyVersion(version, platform)
-		if err != nil {
-			return nil, fmt.Errorf("could not create berry version: %w", err)
-		}
-		return []versionology.Dependency{{
-			ConfigMetadataDependency: dependency,
-			SemverVersion:            versionFetcher.Version(),
-		}}, nil
+	if metadataFile == "" {
+		panic("metadataFile is required")
 	}
+}
+
+func generateClassicMetadata(versionFetcher versionology.VersionFetcher, platform retrieve.Platform) ([]versionology.Dependency, error) {
+	version := versionFetcher.Version().String()
+	tagName := "v" + version
 
 	releases, err := NewGithubClient(NewWebClient()).GetReleaseTags("yarnpkg", "yarn")
 	if err != nil {
@@ -105,27 +108,41 @@ func validate(buildpackTomlPath, metadataFile string) {
 	}
 
 	for _, release := range releases {
-		tagName := "v" + version
-		if release.TagName == tagName {
-			dependency, err := createDependencyVersion(version, tagName, platform)
-			if err != nil {
-				return nil, fmt.Errorf("could not create yarn version: %w", err)
-			}
-
-			return []versionology.Dependency{{
-				ConfigMetadataDependency: dependency,
-				SemverVersion:            versionFetcher.Version(),
-			}}, nil
+		if release.TagName != tagName {
+			continue
 		}
+
+		dependency, err := createDependencyVersion(version, tagName, platform)
+		if err != nil {
+			return nil, fmt.Errorf("could not create yarn version: %w", err)
+		}
+
+		return []versionology.Dependency{{
+			ConfigMetadataDependency: dependency,
+			SemverVersion:            versionFetcher.Version(),
+		}}, nil
 	}
 
 	return nil, fmt.Errorf("could not find yarn version %s", version)
 }
 
-func getAllVersions() (versionology.VersionFetcherArray, error) {
+func generateBerryMetadata(versionFetcher versionology.VersionFetcher, platform retrieve.Platform) ([]versionology.Dependency, error) {
+	version := versionFetcher.Version().String()
+
+	dependency, err := createBerryDependencyVersion(version, platform)
+	if err != nil {
+		return nil, fmt.Errorf("could not create berry version: %w", err)
+	}
+
+	return []versionology.Dependency{{
+		ConfigMetadataDependency: dependency,
+		SemverVersion:            versionFetcher.Version(),
+	}}, nil
+}
+
+func getClassicVersions() (versionology.VersionFetcherArray, error) {
 	githubClient := NewGithubClient(NewWebClient())
 
-	// Classic Yarn releases from yarnpkg/yarn (1.x)
 	classicReleases, err := githubClient.GetReleaseTags("yarnpkg", "yarn")
 	if err != nil {
 		return nil, fmt.Errorf("could not get classic releases: %w", err)
@@ -138,28 +155,32 @@ func getAllVersions() (versionology.VersionFetcherArray, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse version: %w", err)
 		}
-		// Versions less than 0.7.0 do not have source code and the version tag does not contain "v" at the start
-		if version.LessThan(semver.MustParse("0.7.0")) {
-			continue
-		}
-		if version.Prerelease() != "" {
+		// Skip versions without usable release assets: <0.7.0 lack source/tags;
+		// 1.22.20 and 1.22.21 have no binaries.
+		if version.LessThan(semver.MustParse("0.7.0")) ||
+			version.Equal(semver.MustParse("1.22.20")) ||
+			version.Equal(semver.MustParse("1.22.21")) {
 			continue
 		}
 		versions = append(versions, YarnMetadata{version})
 	}
 
-	// Berry releases from yarnpkg/berry (2.x+)
+	return versions, nil
+}
+
+func getBerryVersions() (versionology.VersionFetcherArray, error) {
+	githubClient := NewGithubClient(NewWebClient())
+
 	berryReleases, err := githubClient.GetReleaseTags("yarnpkg", "berry")
 	if err != nil {
 		return nil, fmt.Errorf("could not get berry releases: %w", err)
 	}
+
+	var versions []versionology.VersionFetcher
 	for _, release := range berryReleases {
 		versionStr := strings.TrimPrefix(release.TagName, berryTagPrefix)
 		version, err := semver.NewVersion(versionStr)
 		if err != nil {
-			continue
-		}
-		if version.Prerelease() != "" {
 			continue
 		}
 		versions = append(versions, YarnMetadata{version})
@@ -225,11 +246,11 @@ func createDependencyVersion(version, tagName string, platform retrieve.Platform
 		CPE:             fmt.Sprintf("cpe:2.3:a:yarnpkg:yarn:%s:*:*:*:*:*:*:*", version),
 		Checksum:        fmt.Sprintf("sha256:%s", dependencySHA),
 		DeprecationDate: nil,
-		ID:              "yarn",
+		ID:              yarnDependencyID,
 		Licenses:        retrieve.LookupLicenses(asset.BrowserDownloadUrl, upstream.DefaultDecompress),
 		Name:            "Yarn",
 		OS:              platform.OS,
-		PURL:            retrieve.GeneratePURL("yarn", version, dependencySHA, asset.BrowserDownloadUrl),
+		PURL:            retrieve.GeneratePURL(yarnDependencyID, version, dependencySHA, asset.BrowserDownloadUrl),
 		Source:          asset.BrowserDownloadUrl,
 		SourceChecksum:  fmt.Sprintf("sha256:%s", dependencySHA),
 		StripComponents: 1,

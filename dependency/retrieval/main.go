@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	// berryDependencyID distinguishes Berry entries from Classic in buildpack.toml.
+	yarnDependencyID  = "yarn"
 	berryDependencyID = "berry"
 	berryTagPrefix    = "@yarnpkg/cli/"
 )

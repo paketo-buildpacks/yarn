@@ -253,7 +253,7 @@ require (
 	github.com/shopspring/decimal v1.6.0 // indirect
 	github.com/sigstore/fulcio v1.9.0 // indirect
 	github.com/sigstore/protobuf-specs v0.5.2 // indirect
-	github.com/sigstore/sigstore v1.11.0 // indirect
+	github.com/sigstore/sigstore v1.11.1 // indirect
 	github.com/sirupsen/logrus v1.10.2 // indirect
 	github.com/skeema/knownhosts v1.3.3 // indirect
 	github.com/smallnest/ringbuffer v0.2.0 // indirect
